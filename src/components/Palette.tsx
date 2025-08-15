@@ -33,61 +33,61 @@ export function Palette() {
   };
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="p-4 border-b border-border">
-        <h2 className="text-lg font-semibold mb-3">Blocks</h2>
-        
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search blocks..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-      </div>
+    <div className="h-full">
+      <ScrollArea className="h-full overscroll-contain">
+        {/* Header */}
+        <div className="p-4 border-b border-border">
+          <h2 className="text-lg font-semibold mb-3">Blocks</h2>
 
-      {/* Categories */}
-      <div className="p-4 border-b border-border">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={cn(
-              'px-3 py-1.5 text-sm rounded-md transition-colors',
-              !selectedCategory
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            )}
-          >
-            All
-          </button>
-          {categories.map(category => (
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search blocks..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
+
+        {/* Categories */}
+        <div className="p-4 border-b border-border">
+          <div className="flex flex-wrap gap-2">
             <button
-              key={category.id}
-              onClick={() => setSelectedCategory(category.id)}
+              onClick={() => setSelectedCategory(null)}
               className={cn(
-                'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1',
-                selectedCategory === category.id
+                'px-3 py-1.5 text-sm rounded-md transition-colors',
+                !selectedCategory
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               )}
             >
-              <span>{category.icon}</span>
-              {category.name}
+              All
             </button>
-          ))}
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={cn(
+                  'px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1',
+                  selectedCategory === category.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                )}
+              >
+                <span>{category.icon}</span>
+                {category.name}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-  {/* Blocks List */}
-  <ScrollArea className="flex-1 overscroll-contain">
+        {/* Blocks List */}
         <div className="p-4 space-y-2">
-          {filteredBlocks.map(block => {
+          {filteredBlocks.map((block) => {
             const IconComponent = block.icon;
-            
+
             return (
               <Card
                 key={block.type}
@@ -96,28 +96,24 @@ export function Palette() {
                 onDragStart={(e) => onDragStart(e, block.type)}
               >
                 <div className="flex items-start gap-3">
-                  <div 
+                  <div
                     className="w-8 h-8 rounded flex items-center justify-center text-white flex-shrink-0"
                     style={{ backgroundColor: block.bgColor || '#6b7280' }}
                   >
                     <IconComponent size={16} />
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm text-foreground truncate">
-                      {block.name}
-                    </h4>
+                    <h4 className="font-medium text-sm text-foreground truncate">{block.name}</h4>
                     {block.description && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                        {block.description}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{block.description}</p>
                     )}
                   </div>
                 </div>
               </Card>
             );
           })}
-          
+
           {filteredBlocks.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No blocks found</p>
