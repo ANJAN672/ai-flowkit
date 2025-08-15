@@ -5,9 +5,16 @@ import { Card } from '@/components/ui/card';
 import { Trash2, Copy, Download } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useRef } from 'react';
 
 export function ExecutionLog() {
   const { currentExecution, clearExecution } = useAppStore();
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to newest log entry
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [currentExecution?.logs.length]);
 
   const handleClear = () => {
     clearExecution();
@@ -68,12 +75,12 @@ export function ExecutionLog() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-background border-t border-border">
+    <div className="h-full flex flex-col bg-card">
       {/* Header */}
-      <div className="p-4 border-b border-border">
+      <div className="p-3 border-b border-border sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/75">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold">Execution Log</h3>
+            <h3 className="text-sm font-medium">Execution Log</h3>
             {currentExecution && (
               <Badge variant={getStatusBadgeVariant(currentExecution.status)}>
                 {currentExecution.status}
@@ -98,7 +105,7 @@ export function ExecutionLog() {
 
         {/* Execution Summary */}
         {currentExecution && (
-          <div className="mt-3 grid grid-cols-4 gap-4 text-sm">
+          <div className="mt-2 grid grid-cols-4 gap-3 text-xs">
             <div>
               <span className="text-muted-foreground">Started:</span>
               <div className="font-mono">
@@ -109,24 +116,18 @@ export function ExecutionLog() {
             {currentExecution.endTime && (
               <div>
                 <span className="text-muted-foreground">Duration:</span>
-                <div className="font-mono">
-                  {currentExecution.duration || 0}ms
-                </div>
+                <div className="font-mono">{currentExecution.duration || 0}ms</div>
               </div>
             )}
             
             <div>
               <span className="text-muted-foreground">Logs:</span>
-              <div className="font-mono">
-                {currentExecution.logs.length}
-              </div>
+              <div className="font-mono">{currentExecution.logs.length}</div>
             </div>
             
             <div>
               <span className="text-muted-foreground">Nodes:</span>
-              <div className="font-mono">
-                {Object.keys(currentExecution.nodeExecutions).length}
-              </div>
+              <div className="font-mono">{Object.keys(currentExecution.nodeExecutions).length}</div>
             </div>
           </div>
         )}
@@ -134,34 +135,35 @@ export function ExecutionLog() {
 
       {/* Logs */}
       <ScrollArea className="flex-1">
-        <div className="p-4">
+        <div className="p-3">
           {currentExecution && currentExecution.logs.length > 0 ? (
             <div className="space-y-2">
               {currentExecution.logs.map((log) => (
-                <Card key={log.id} className="p-3">
+                <Card key={log.id} className="p-2">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-[10px]">
                           {log.level.toUpperCase()}
                         </Badge>
                         {log.nodeId && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge variant="secondary" className="text-[10px]">
                             {log.nodeId}
                           </Badge>
                         )}
                       </div>
-                      <p className={`text-sm ${getLogLevelColor(log.level)}`}>
+                      <p className={`text-xs ${getLogLevelColor(log.level)}`}>
                         {log.message}
                       </p>
                     </div>
                     
-                    <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
+                    <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap">
                       {new Date(log.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                 </Card>
               ))}
+              <div ref={bottomRef} />
             </div>
           ) : (
             <div className="flex items-center justify-center h-32">

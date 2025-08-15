@@ -33,7 +33,7 @@ export class ExecutionEngine {
       this.validateWorkflow(workflow);
 
       // Create execution context
-      const nodeOutputs: Record<string, Record<string, any>> = {};
+  const nodeOutputs: Record<string, Record<string, unknown>> = {};
       
       // Execute nodes in topological order (simplified for MVP)
       const startNode = workflow.nodes.find(node => node.id === workflow.starterId);
@@ -41,17 +41,29 @@ export class ExecutionEngine {
         throw new Error('Start node not found');
       }
 
-      // For MVP, execute in simple sequence: starter -> connected nodes
-      await this.executeNode(workflow, startNode, execution, env, nodeOutputs);
+      // Execute reachable graph in BFS order from the starter
+      const visited = new Set<string>();
+      const queue: string[] = [startNode.id];
 
-      // Find connected nodes and execute them
-      const connectedNodes = this.getConnectedNodes(workflow, startNode.id);
-      for (const node of connectedNodes) {
+      while (queue.length > 0) {
         if (this.abortController?.signal.aborted) {
           execution.status = 'cancelled';
           break;
         }
+
+        const nodeId = queue.shift()!;
+        if (visited.has(nodeId)) continue;
+        visited.add(nodeId);
+
+        const node = workflow.nodes.find(n => n.id === nodeId);
+        if (!node) continue;
+
         await this.executeNode(workflow, node, execution, env, nodeOutputs);
+
+        const nextNodes = this.getConnectedNodes(workflow, nodeId);
+        for (const n of nextNodes) {
+          if (!visited.has(n.id)) queue.push(n.id);
+        }
       }
 
       if (execution.status !== 'cancelled') {
@@ -73,10 +85,10 @@ export class ExecutionEngine {
 
   private async executeNode(
     workflow: Workflow,
-    node: any,
+  node: { id: string; type: string; data: Record<string, unknown> },
     execution: WorkflowExecution,
     env: Record<string, string>,
-    nodeOutputs: Record<string, Record<string, any>>
+  nodeOutputs: Record<string, Record<string, unknown>>
   ): Promise<void> {
     const nodeExecution: NodeExecution = {
       nodeId: node.id,
@@ -102,12 +114,12 @@ export class ExecutionEngine {
         inputs: node.data,
         env,
         fetch: this.createFetchWithTimeout(),
-        log: (message: any) => this.log(execution, 'info', String(message), node.id),
+  log: (message: unknown) => this.log(execution, 'info', String(message), node.id),
         getNodeOutput: (nodeId: string, key?: string) => {
           const outputs = nodeOutputs[nodeId];
           return key ? outputs?.[key] : outputs;
         },
-        setNodeOutput: (key: string, value: any) => {
+  setNodeOutput: (key: string, value: unknown) => {
           if (!nodeOutputs[node.id]) {
             nodeOutputs[node.id] = {};
           }
@@ -152,12 +164,14 @@ export class ExecutionEngine {
     // Additional validation could go here
   }
 
-  private getConnectedNodes(workflow: Workflow, fromNodeId: string): any[] {
+  private getConnectedNodes(workflow: Workflow, fromNodeId: string): Array<{ id: string; type: string; data: Record<string, unknown> }> {
     const connectedNodeIds = workflow.edges
       .filter(edge => edge.source === fromNodeId)
       .map(edge => edge.target);
 
-    return workflow.nodes.filter(node => connectedNodeIds.includes(node.id));
+    return workflow.nodes
+      .filter(node => connectedNodeIds.includes(node.id))
+      .map(n => ({ id: n.id, type: n.type, data: n.data as Record<string, unknown> }));
   }
 
   private createFetchWithTimeout(): typeof fetch {
@@ -207,4 +221,17 @@ export async function executeWorkflow(
 ): Promise<WorkflowExecution> {
   const engine = new ExecutionEngine(onLog, onNodeUpdate);
   return engine.executeWorkflow(workflow, env);
+}
+
+// Starts a workflow and returns the engine instance and the running promise.
+// Use engine.stop() to cancel.
+export function startWorkflow(
+  workflow: Workflow,
+  env: Record<string, string> = {},
+  onLog?: (log: ExecutionLog) => void,
+  onNodeUpdate?: (nodeId: string, execution: NodeExecution) => void
+): { engine: ExecutionEngine; promise: Promise<WorkflowExecution> } {
+  const engine = new ExecutionEngine(onLog, onNodeUpdate);
+  const promise = engine.executeWorkflow(workflow, env);
+  return { engine, promise };
 }

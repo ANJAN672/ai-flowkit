@@ -82,8 +82,8 @@ export function Palette() {
         </div>
       </div>
 
-      {/* Blocks List */}
-      <ScrollArea className="flex-1">
+  {/* Blocks List */}
+  <ScrollArea className="flex-1 overscroll-contain">
         <div className="p-4 space-y-2">
           {filteredBlocks.map(block => {
             const IconComponent = block.icon;

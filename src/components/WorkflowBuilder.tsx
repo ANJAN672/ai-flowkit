@@ -222,8 +222,8 @@ export function WorkflowBuilder() {
       <Topbar />
       
       <div className="flex-1 flex">
-        {/* Left Palette */}
-        <div className="w-80 border-r border-border bg-card">
+  {/* Left Palette */}
+  <div className="w-80 h-full border-r border-border bg-card overflow-hidden">
           <Palette />
         </div>
 
@@ -256,23 +256,22 @@ export function WorkflowBuilder() {
           </ReactFlow>
         </div>
 
-        {/* Right Panels */}
-        <div className="flex">
-          {/* Copilot Panel */}
-          {showCopilot && (
-            <div className="w-80 border-l border-border bg-card">
-              <Copilot />
-            </div>
-          )}
-        </div>
+        {/* Right Panels (Logs top, Copilot bottom) */}
+        {(showExecutionLog || showCopilot) && (
+          <div className="w-80 border-l border-border bg-card flex flex-col">
+            {showExecutionLog && (
+              <div className={showCopilot ? "basis-2/3 min-h-[220px] border-b border-border" : "flex-1"}>
+                <ExecutionLog />
+              </div>
+            )}
+            {showCopilot && (
+              <div className={showExecutionLog ? "basis-1/3 min-h-[200px]" : "flex-1"}>
+                <Copilot />
+              </div>
+            )}
+          </div>
+        )}
       </div>
-
-      {/* Bottom Execution Log */}
-      {showExecutionLog && (
-        <div className="h-80 border-t border-border">
-          <ExecutionLog />
-        </div>
-      )}
     </div>
   );
 }

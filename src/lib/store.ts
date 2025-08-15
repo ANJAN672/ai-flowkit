@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { Workspace, Workflow, WorkflowExecution, ExecutionLog } from './types';
 import { loadFromStorage, saveToStorage } from './storage';
+import { startWorkflow } from './execution/engine';
 
 interface AppState {
   // Workspaces
@@ -18,9 +19,11 @@ interface AppState {
   // Execution
   currentExecution: WorkflowExecution | null;
   isExecuting: boolean;
+  // internal engine ref
+  _engine?: unknown;
   
   // History
-  history: any[];
+  history: unknown[];
   historyIndex: number;
   
   // Settings
@@ -56,7 +59,7 @@ interface AppActions {
   // History actions
   undo: () => void;
   redo: () => void;
-  pushHistory: (state: any) => void;
+  pushHistory: (state: unknown) => void;
   
   // Settings actions
   setApiKey: (provider: string, key: string) => void;
@@ -249,7 +252,7 @@ export const useAppStore = create<AppState & AppActions>()(
       },
 
       // Execution actions
-      startExecution: async (workflowId: string) => {
+  startExecution: async (workflowId: string) => {
         const state = get();
         const workspace = state.workspaces.find(ws => ws.id === state.currentWorkspaceId);
         const workflow = workspace?.workflows.find(wf => wf.id === workflowId);
@@ -268,12 +271,12 @@ export const useAppStore = create<AppState & AppActions>()(
         set((state) => ({
           ...state,
           isExecuting: true,
+          showExecutionLog: true,
           currentExecution: execution
         }));
 
         try {
-          const { executeWorkflow } = await import('./execution/engine');
-          const result = await executeWorkflow(
+          const { engine, promise } = startWorkflow(
             workflow,
             state.apiKeys,
             (log) => {
@@ -296,11 +299,14 @@ export const useAppStore = create<AppState & AppActions>()(
               }));
             }
           );
-          
+          // store engine for cancellation
+          set((s) => ({ ...s, _engine: engine }));
+          const result = await promise;
           set((state) => ({
             ...state,
             currentExecution: result,
-            isExecuting: false
+            isExecuting: false,
+            _engine: undefined
           }));
         } catch (error) {
           set((state) => ({
@@ -312,12 +318,20 @@ export const useAppStore = create<AppState & AppActions>()(
                   endTime: new Date().toISOString()
                 }
               : null,
-            isExecuting: false
+            isExecuting: false,
+            _engine: undefined
           }));
         }
       },
 
       stopExecution: () => {
+        const engine = get()._engine as { stop?: () => void } | undefined;
+        try {
+          engine?.stop?.();
+        } catch (e) {
+          // ignore cancellation errors
+          console.warn('Stop execution error:', e);
+        }
         set((state) => ({
           ...state,
           isExecuting: false,
@@ -327,7 +341,8 @@ export const useAppStore = create<AppState & AppActions>()(
                 status: 'cancelled' as const,
                 endTime: new Date().toISOString()
               }
-            : null
+            : null,
+          _engine: undefined
         }));
       },
 
@@ -357,7 +372,7 @@ export const useAppStore = create<AppState & AppActions>()(
         // TODO: Implement redo functionality
       },
 
-      pushHistory: (state: any) => {
+  pushHistory: (state: unknown) => {
         // TODO: Implement history push
       },
 
