@@ -7,7 +7,7 @@ export const conditionBlock: BlockConfig = {
   description: 'Branch workflow based on conditions',
   category: 'control',
   bgColor: '#8b5cf6',
-  icon: GitBranch,
+  icon: GitBranch as unknown as React.FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'expression',
@@ -26,17 +26,17 @@ export const conditionBlock: BlockConfig = {
     result: { type: 'any', description: 'Condition result (true/false)' }
   },
   async run(ctx) {
-    const { expression } = ctx.inputs;
+  const { expression } = ctx.inputs as { expression?: unknown };
     
-    ctx.log(`Evaluating condition: ${expression}`);
+  ctx.log(`Evaluating condition: ${String(expression)}`);
     
     try {
       // Get all previous node outputs for the evaluation context
-      const context: Record<string, any> = {};
+  const context: Record<string, unknown> = {};
       
       // Simple expression evaluation (in a real implementation, use a safe sandbox)
       // For MVP, we'll do basic pattern matching
-      const result = evaluateExpression(expression, context);
+  const result = evaluateExpression(String(expression ?? ''), context);
       
       ctx.setNodeOutput('result', result);
       ctx.log(`Condition result: ${result}`);
@@ -52,7 +52,7 @@ export const conditionBlock: BlockConfig = {
 };
 
 // Simple expression evaluator for MVP
-function evaluateExpression(expression: string, context: Record<string, any>): boolean {
+function evaluateExpression(expression: string, _context: Record<string, unknown>): boolean {
   // For MVP, just return true for non-empty expressions
   // In a real implementation, use a safe JS sandbox
   return expression.trim().length > 0;

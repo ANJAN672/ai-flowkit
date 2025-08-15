@@ -170,6 +170,15 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  /* Prevent outer page scroll; use in-panel scrollers instead */
+  body {
+    overflow: hidden;
+  }
 }
 
 /* React Flow Styles */
@@ -191,4 +200,13 @@ All colors MUST be HSL.
 
 .node-running {
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Hide native scrollbars but keep scrolling functional */
+.scrollbar-none {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }

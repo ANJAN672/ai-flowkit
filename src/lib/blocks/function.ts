@@ -7,7 +7,7 @@ export const functionBlock: BlockConfig = {
   description: 'Execute custom JavaScript code',
   category: 'blocks',
   bgColor: '#6366f1',
-  icon: Code,
+  icon: Code as unknown as React.FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'code',
@@ -38,14 +38,14 @@ return {
     error: { type: 'string', description: 'Error message if execution failed' }
   },
   async run(ctx) {
-    const { code } = ctx.inputs;
+  const { code } = ctx.inputs as { code?: unknown };
     
     ctx.log('Executing custom function');
     
     try {
       // In a real implementation, use vm2 or a proper sandbox
       // For MVP, we'll do a simple evaluation with basic safety
-      const result = executeFunction(code, ctx.inputs, ctx);
+  const result = executeFunction(String(code ?? ''), ctx.inputs, ctx);
       
       if (typeof result === 'object' && result !== null) {
         // Set all properties of the result as outputs
@@ -68,7 +68,7 @@ return {
 };
 
 // Simple function executor for MVP (not secure - use vm2 in production)
-function executeFunction(code: string, inputs: any, ctx: any): any {
+function executeFunction(code: string, inputs: Record<string, unknown>, ctx: { log: (msg: unknown) => void }): unknown {
   try {
     // Create a function wrapper
     const functionWrapper = new Function('inputs', 'ctx', 'log', code);

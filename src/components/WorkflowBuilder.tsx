@@ -223,12 +223,12 @@ export function WorkflowBuilder() {
       
       <div className="flex-1 flex">
   {/* Left Palette */}
-  <div className="w-80 h-full border-r border-border bg-card overflow-hidden">
+  <div className="w-80 h-full min-h-0 border-r border-border bg-card overflow-hidden">
           <Palette />
         </div>
 
         {/* Center Canvas */}
-        <div className="flex-1 relative">
+  <div className="flex-1 relative min-h-0">
           <ReactFlow
             nodes={nodes}
             edges={edges}

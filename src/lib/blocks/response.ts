@@ -7,7 +7,7 @@ export const responseBlock: BlockConfig = {
   description: 'Final output of the workflow',
   category: 'io',
   bgColor: '#10b981',
-  icon: CheckCircle,
+  icon: CheckCircle as unknown as React.FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'message',
@@ -33,27 +33,27 @@ export const responseBlock: BlockConfig = {
     response: { type: 'json', description: 'Final workflow response' }
   },
   async run(ctx) {
-    const { message, includeInputs, data } = ctx.inputs;
+    const { message, includeInputs, data } = ctx.inputs as { message?: unknown; includeInputs?: unknown; data?: unknown };
     
     ctx.log('Generating workflow response');
     
-    const response: any = {
-      message: message || 'Workflow completed',
+    const response: Record<string, unknown> = {
+      message: (message as string) || 'Workflow completed',
       timestamp: new Date().toISOString(),
       workflowId: ctx.workflowId
     };
     
-    if (data) {
-      response.data = data;
+    if (typeof data !== 'undefined') {
+      (response as Record<string, unknown>).data = data;
     }
     
     if (includeInputs) {
       // In a real implementation, collect all node outputs
-      response.allData = {};
+      (response as Record<string, unknown>).allData = {};
     }
     
-    ctx.setNodeOutput('response', response);
-    ctx.log(`Response generated: ${response.message}`);
+  ctx.setNodeOutput('response', response);
+  ctx.log(`Response generated: ${String(response.message)}`);
     
     return response;
   }

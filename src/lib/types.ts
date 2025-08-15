@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // Field condition types
 export type FieldCondition =
-  | { field: string; value: any; not?: boolean; and?: FieldCondition }
+  | { field: string; value: unknown; not?: boolean; and?: FieldCondition }
   | (() => boolean);
 
 // Block field types
@@ -33,12 +33,12 @@ export type BlockField = {
 
 // Block IO types
 export type BlockIO = {
-  inputs: Record<string, { type: 'string' | 'number' | 'json' | 'any'; description?: string; schema?: any }>;
+  inputs: Record<string, { type: 'string' | 'number' | 'json' | 'any'; description?: string; schema?: unknown }>;
   outputs: Record<string, { type: 'string' | 'number' | 'json' | 'any'; description?: string }>;
 };
 
 // Block configuration
-export type BlockConfig<TResp = any> = {
+export type BlockConfig<TResp = unknown> = {
   type: string;
   name: string;
   description?: string;
@@ -46,13 +46,13 @@ export type BlockConfig<TResp = any> = {
   docsLink?: string;
   category: 'blocks' | 'tools' | 'io' | 'control' | 'integrations';
   bgColor?: string;
-  icon: React.FC<any>;
+  icon: React.FC<{ size?: number }>;
   subBlocks?: BlockField[];
   tools?: {
     access?: string[];
     config?: {
-      tool?: (params: any) => any;
-      params?: (params: any) => any;
+  tool?: (params: unknown) => unknown;
+  params?: (params: unknown) => unknown;
     };
   };
   inputs: BlockIO['inputs'];
@@ -64,12 +64,12 @@ export type BlockConfig<TResp = any> = {
 export type RunContext = {
   workflowId: string;
   nodeId: string;
-  inputs: Record<string, any>;
+  inputs: Record<string, unknown>;
   env: Record<string, string>;
   fetch: typeof fetch;
-  log: (msg: any) => void;
-  getNodeOutput: (nodeId: string, key?: string) => any;
-  setNodeOutput: (key: string, val: any) => void;
+  log: (msg: unknown) => void;
+  getNodeOutput: (nodeId: string, key?: string) => unknown;
+  setNodeOutput: (key: string, val: unknown) => void;
   abortSignal: AbortSignal;
 };
 
@@ -78,7 +78,7 @@ export type WorkflowNode = {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: Record<string, any>;
+  data: Record<string, unknown>;
 };
 
 export type WorkflowEdge = {
@@ -125,7 +125,7 @@ export type NodeExecution = {
   startTime?: string;
   endTime?: string;
   duration?: number;
-  outputs?: Record<string, any>;
+  outputs?: Record<string, unknown>;
   error?: string;
 };
 
@@ -138,7 +138,7 @@ export type WorkflowExecution = {
   duration?: number;
   logs: ExecutionLog[];
   nodeExecutions: Record<string, NodeExecution>;
-  result?: any;
+  result?: unknown;
 };
 
 // Validation schemas

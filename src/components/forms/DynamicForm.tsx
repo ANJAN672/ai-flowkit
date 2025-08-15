@@ -13,28 +13,33 @@ import { CodeEditor } from './CodeEditor';
 
 interface DynamicFormProps {
   fields: BlockField[];
-  values: Record<string, any>;
-  onChange: (values: Record<string, any>) => void;
+  values: Record<string, unknown>;
+  onChange: (values: Record<string, unknown>) => void;
 }
 
 export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
   const [localValues, setLocalValues] = useState(values);
 
-  const updateValue = (fieldId: string, value: any) => {
+  const updateValue = (fieldId: string, value: unknown) => {
     const newValues = { ...localValues, [fieldId]: value };
     setLocalValues(newValues);
     onChange(newValues);
   };
 
-  const evaluateCondition = (condition: any): boolean => {
+  const evaluateCondition = (condition: unknown): boolean => {
     if (typeof condition === 'function') {
-      return condition();
+      try {
+        return (condition as () => boolean)();
+      } catch {
+        return true;
+      }
     }
     
-    if (condition.field) {
-      const fieldValue = localValues[condition.field];
-      const matches = condition.value === fieldValue;
-      return condition.not ? !matches : matches;
+    if (typeof condition === 'object' && condition && 'field' in (condition as Record<string, unknown>)) {
+      const c = condition as { field: string; value: unknown; not?: boolean };
+      const fieldValue = (localValues as Record<string, unknown>)[c.field];
+      const matches = c.value === fieldValue;
+      return c.not ? !matches : matches;
     }
     
     return true;
@@ -75,13 +80,13 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
     );
   };
 
-  const renderFieldInput = (field: BlockField, value: any) => {
+  const renderFieldInput = (field: BlockField, value: unknown) => {
     switch (field.type) {
       case 'short-input':
         return (
           <Input
             id={field.id}
-            value={value}
+            value={String(value ?? '')}
             onChange={(e) => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder}
             type={field.password ? 'password' : 'text'}
@@ -92,7 +97,7 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
         return (
           <Textarea
             id={field.id}
-            value={value}
+            value={String(value ?? '')}
             onChange={(e) => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder}
             rows={field.rows || 3}
@@ -102,7 +107,7 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
       case 'code':
         return (
           <CodeEditor
-            value={value}
+            value={String(value ?? '')}
             onChange={(newValue) => updateValue(field.id, newValue)}
             language={field.language || 'javascript'}
             placeholder={field.placeholder}
@@ -113,14 +118,14 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
         return (
           <div className="space-y-2">
             <Slider
-              value={[value || field.min || 0]}
+              value={[Number(value ?? field.min ?? 0)]}
               onValueChange={([newValue]) => updateValue(field.id, newValue)}
               min={field.min || 0}
               max={field.max || 100}
               step={field.step || 1}
             />
             <div className="text-xs text-muted-foreground text-right">
-              {value || field.min || 0}
+              {String(value ?? field.min ?? 0)}
             </div>
           </div>
         );
@@ -130,7 +135,7 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
           <div className="flex items-center space-x-2">
             <Switch
               id={field.id}
-              checked={value || false}
+              checked={Boolean(value)}
               onCheckedChange={(checked) => updateValue(field.id, checked)}
             />
             <Label htmlFor={field.id} className="text-sm">
@@ -139,10 +144,10 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
           </div>
         );
 
-      case 'combobox':
+      case 'combobox': {
         const options = field.options ? field.options() : [];
         return (
-          <Select value={value} onValueChange={(newValue) => updateValue(field.id, newValue)}>
+          <Select value={String(value ?? '')} onValueChange={(newValue) => updateValue(field.id, newValue)}>
             <SelectTrigger>
               <SelectValue placeholder={field.placeholder || 'Select...'} />
             </SelectTrigger>
@@ -155,14 +160,15 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
             </SelectContent>
           </Select>
         );
+      }
 
       case 'number':
         return (
           <Input
             id={field.id}
             type="number"
-            value={value}
-            onChange={(e) => updateValue(field.id, parseFloat(e.target.value) || 0)}
+            value={Number(value ?? 0)}
+            onChange={(e) => updateValue(field.id, Number.parseFloat(e.target.value) || 0)}
             placeholder={field.placeholder}
             min={field.min}
             max={field.max}
@@ -174,7 +180,7 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
         return (
           <Input
             id={field.id}
-            value={value}
+            value={String(value ?? '')}
             onChange={(e) => updateValue(field.id, e.target.value)}
             placeholder={field.placeholder}
           />

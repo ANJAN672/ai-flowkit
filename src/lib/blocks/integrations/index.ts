@@ -7,14 +7,24 @@ const createIntegrationBlock = (
   name: string,
   description: string,
   icon = Plug,
-  additionalFields: any[] = []
+  additionalFields: Array<{
+    id: string;
+    title: string;
+    type: 'short-input' | 'long-input' | 'code' | 'slider' | 'combobox' | 'tool-input' | 'toggle' | 'number';
+    layout: 'full' | 'half';
+    placeholder?: string;
+    required?: boolean;
+    options?: () => Array<{ id: string; label: string }>;
+    rows?: number;
+    language?: 'json' | 'typescript' | 'javascript' | 'text';
+  }> = []
 ): BlockConfig => ({
   type,
   name,
   description,
   category: 'integrations',
   bgColor: '#06b6d4', // Light blue for integrations
-  icon,
+  icon: icon as unknown as React.FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'apiKey',
@@ -43,7 +53,7 @@ const createIntegrationBlock = (
     status: { type: 'string', description: 'Request status' }
   },
   async run(ctx) {
-    const { apiKey } = ctx.inputs;
+    const { apiKey } = ctx.inputs as { apiKey?: unknown };
     
     if (!apiKey) {
       throw new Error(`${name} API key is required`);
@@ -52,7 +62,7 @@ const createIntegrationBlock = (
     ctx.log(`Executing ${name} integration`);
     
     // Mock response for now
-    const result = {
+  const result = {
       data: { message: `${name} integration executed successfully` },
       status: 'success'
     };

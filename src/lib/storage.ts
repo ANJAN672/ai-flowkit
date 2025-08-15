@@ -1,7 +1,21 @@
 const STORAGE_KEY = 'sim-ai-workflow-builder';
 
 export interface StoredData {
-  workspaces: any[];
+  workspaces: Array<{
+    id: string;
+    name: string;
+    workflows: Array<{
+      id: string;
+      name: string;
+      nodes: Array<{ id: string; type: string; position: { x: number; y: number }; data: Record<string, unknown> }>;
+      edges: Array<{ id: string; source: string; target: string; sourceHandle?: string; targetHandle?: string; label?: string }>;
+      createdAt: string;
+      updatedAt: string;
+      starterId: string;
+    }>;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   currentWorkspaceId: string | null;
   currentWorkflowId: string | null;
   isDarkMode: boolean;
