@@ -29,7 +29,8 @@ export function Topbar() {
     showExecutionLog,
     showCopilot,
     isDarkMode,
-    toggleDarkMode
+  toggleDarkMode,
+  saveToStorage
   } = useAppStore();
 
   const currentWorkspace = workspaces.find(ws => ws.id === currentWorkspaceId);
@@ -78,7 +79,7 @@ export function Topbar() {
 
       <div className="flex items-center gap-2">
         {/* Action Buttons */}
-        <Button variant="ghost" size="sm">
+  <Button variant="ghost" size="sm" onClick={saveToStorage}>
           <Save className="w-4 h-4 mr-2" />
           Save
         </Button>

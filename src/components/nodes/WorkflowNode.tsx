@@ -1,22 +1,33 @@
-import { memo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { DynamicForm } from '@/components/forms/DynamicForm';
+import type { BlockField } from '@/lib/types';
 
 interface WorkflowNodeData {
   label: string;
-  blockConfig?: any;
+  blockConfig?: { subBlocks?: BlockField[]; bgColor?: string; icon?: React.FC<Record<string, unknown>>; description?: string; type?: string };
   status?: 'idle' | 'running' | 'success' | 'error';
   duration?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export const WorkflowNode = memo(({ id, data, selected }: NodeProps) => {
-  const { setSelectedNode, currentExecution } = useAppStore();
+  const { 
+    setSelectedNode, 
+    currentExecution,
+    workspaces,
+    currentWorkspaceId,
+    currentWorkflowId,
+    updateWorkflow
+  } = useAppStore();
   const nodeData = data as WorkflowNodeData;
   const { label, blockConfig, status = 'idle' } = nodeData || {};
+  const [showProps, setShowProps] = useState(false);
 
   const nodeExecution = currentExecution?.nodeExecutions?.[id as string];
   const currentStatus = nodeExecution?.status || status;
@@ -41,6 +52,36 @@ export const WorkflowNode = memo(({ id, data, selected }: NodeProps) => {
   };
 
   const IconComponent = blockConfig?.icon;
+  const fields: BlockField[] = useMemo(() => (blockConfig?.subBlocks || []) as BlockField[], [blockConfig?.subBlocks]);
+
+  const initialValues = useMemo<Record<string, unknown>>(() => {
+    // Values are stored in nodeData; pass through for the DynamicForm
+    const vals: Record<string, unknown> = {};
+    fields.forEach((f: BlockField) => {
+      vals[f.id] = (nodeData && nodeData[f.id] !== undefined) ? nodeData[f.id] : '';
+    });
+    return vals;
+  }, [fields, nodeData]);
+
+  const persistNodeData = (values: Record<string, unknown>) => {
+    const ws = workspaces.find(w => w.id === currentWorkspaceId);
+    const wf = ws?.workflows.find(w => w.id === currentWorkflowId);
+    if (!ws || !wf) return;
+
+    // Sanitize: only persist fields defined in subBlocks
+    const sanitized: Record<string, unknown> = {};
+    fields.forEach((f: BlockField) => {
+      sanitized[f.id] = values[f.id];
+    });
+
+    const updatedNodes = wf.nodes.map(n =>
+      n.id === (id as string)
+        ? { ...n, data: { ...sanitized } }
+        : n
+    );
+
+    updateWorkflow(ws.id, { ...wf, nodes: updatedNodes });
+  };
 
   return (
     <Card
@@ -74,6 +115,12 @@ export const WorkflowNode = memo(({ id, data, selected }: NodeProps) => {
               {currentStatus}
             </Badge>
           )}
+          {/* Inline props toggle (only if the block has fields) */}
+          {fields.length > 0 && (
+            <Button variant="ghost" size="sm" className="h-7" onClick={(e) => { e.stopPropagation(); setShowProps(v => !v); }}>
+              {showProps ? 'Hide' : 'Edit'}
+            </Button>
+          )}
         </div>
 
         {/* Duration badge */}
@@ -88,6 +135,17 @@ export const WorkflowNode = memo(({ id, data, selected }: NodeProps) => {
           <p className="text-xs text-muted-foreground mt-1 truncate">
             {blockConfig.description}
           </p>
+        )}
+
+        {/* Inline Properties */}
+        {showProps && fields.length > 0 && (
+          <div className="mt-3">
+            <DynamicForm
+              fields={fields}
+              values={initialValues}
+              onChange={persistNodeData}
+            />
+          </div>
         )}
       </div>
 
