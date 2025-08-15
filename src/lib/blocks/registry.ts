@@ -5,6 +5,7 @@ import { apiBlock } from './api';
 import { conditionBlock } from './condition';
 import { responseBlock } from './response';
 import { functionBlock } from './function';
+import { integrationBlocks } from './integrations';
 
 export const blockRegistry: Record<string, BlockConfig> = {
   starter: starterBlock,
@@ -13,6 +14,7 @@ export const blockRegistry: Record<string, BlockConfig> = {
   condition: conditionBlock,
   response: responseBlock,
   function: functionBlock,
+  ...integrationBlocks,
 };
 
 export function getBlockConfig(type: string): BlockConfig | undefined {
