@@ -1,5 +1,9 @@
 import { Bot } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../types';
+
+const BotIcon: FC<{ size?: number }> = ({ size }) => createElement(Bot, { size });
 
 export const agentBlock: BlockConfig = {
   type: 'agent',
@@ -8,7 +12,7 @@ export const agentBlock: BlockConfig = {
   longDescription: 'Send prompts to AI models and get responses. Supports OpenAI GPT models, Anthropic Claude, and local Ollama models.',
   category: 'blocks',
   bgColor: '#3b82f6',
-  icon: Bot,
+  icon: BotIcon,
   subBlocks: [
     {
       id: 'systemPrompt',
@@ -106,13 +110,14 @@ export const agentBlock: BlockConfig = {
     toolCalls: { type: 'json', description: 'Tool calls made by AI' }
   },
   async run(ctx) {
-    const { systemPrompt, userPrompt, model, temperature = 0.7, apiKey, responseFormat } = ctx.inputs;
+  const { systemPrompt, userPrompt, model, temperature = 0.7, apiKey, responseFormat } = ctx.inputs;
     
     ctx.log(`Using model: ${model}`);
     
     // Check if Ollama model
-    if (model.startsWith('ollama:')) {
-      const ollamaModel = model.replace('ollama:', '');
+    const modelStr = String(model ?? '');
+    if (modelStr.startsWith('ollama:')) {
+      const ollamaModel = modelStr.replace('ollama:', '');
       try {
         const response = await ctx.fetch('http://localhost:11434/api/chat', {
           method: 'POST',
@@ -148,7 +153,7 @@ export const agentBlock: BlockConfig = {
       } catch (error) {
         ctx.log(`Ollama not available, using mock response: ${error}`);
         const mockResult = {
-          content: `Mock AI response for prompt: "${userPrompt}"`,
+          content: `Mock AI response for prompt: "${String(userPrompt)}"`,
           model: ollamaModel,
           tokens: 50
         };
@@ -165,8 +170,8 @@ export const agentBlock: BlockConfig = {
     if (!apiKey) {
       ctx.log('No API key provided, using mock response');
       const mockResult = {
-        content: `Mock AI response for prompt: "${userPrompt}" using ${model}`,
-        model,
+  content: `Mock AI response for prompt: "${String(userPrompt)}" using ${modelStr}`,
+  model: modelStr,
         tokens: 100
       };
       
@@ -180,8 +185,8 @@ export const agentBlock: BlockConfig = {
     // Real API implementation would go here
     ctx.log('API calls not implemented in MVP, using mock response');
     const result = {
-      content: `AI would respond to: "${userPrompt}"`,
-      model,
+      content: `AI would respond to: "${String(userPrompt)}"`,
+      model: modelStr,
       tokens: 150
     };
     

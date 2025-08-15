@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Home, 
   Save, 
@@ -11,54 +11,48 @@ import {
   FileText, 
   MessageSquare,
   Moon,
-  Sun
+  Sun,
+  ChevronLeft,
+  ChevronDown,
+  Trash2,
+  Sparkles,
+  Printer,
+  Wand2,
+  Plus,
+  MoreHorizontal
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from '@/components/ui/menubar';
 
-export function Topbar() {
+interface TopbarProps {
+  onExecute: () => void;
+  isExecuting: boolean;
+}
+
+export function Topbar({ onExecute, isExecuting }: TopbarProps) {
   const {
     workspaces,
     currentWorkspaceId,
     currentWorkflowId,
     setCurrentWorkspace,
-    isExecuting,
-    startExecution,
-    stopExecution,
-    toggleExecutionLog,
-    toggleCopilot,
-    showExecutionLog,
-    showCopilot,
     isDarkMode,
-  toggleDarkMode,
-  saveToStorage
+    toggleDarkMode,
+    saveToStorage
   } = useAppStore();
 
   const currentWorkspace = workspaces.find(ws => ws.id === currentWorkspaceId);
   const currentWorkflow = currentWorkspace?.workflows.find(wf => wf.id === currentWorkflowId);
-
-  const handleRun = () => {
-    if (currentWorkflowId) {
-      startExecution(currentWorkflowId);
-    }
-  };
-
-  const handleStop = () => {
-    stopExecution();
-  };
+  const { openRightPanel } = useAppStore();
 
   return (
     <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4">
-      <div className="flex items-center gap-4">
-        {/* Home */}
-        <Button variant="ghost" size="sm">
-          <Home className="w-4 h-4" />
-        </Button>
-
-        {/* Workspace Selector */}
+      {/* Left Side - Just Workspace */}
+      <div className="flex items-center gap-3">
+        {/* Workspace Selector - EXACTLY like sim.ai */}
         <div className="flex items-center gap-2">
           <Select value={currentWorkspaceId || ''} onValueChange={setCurrentWorkspace}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Select workspace" />
+            <SelectTrigger className="w-48 h-8 bg-transparent border-none">
+              <SelectValue placeholder="ANJAN's Workspace" />
             </SelectTrigger>
             <SelectContent>
               {workspaces.map((workspace) => (
@@ -69,71 +63,73 @@ export function Topbar() {
             </SelectContent>
           </Select>
           
-          {currentWorkflow && (
-            <Badge variant="outline">
-              {currentWorkflow.name}
-            </Badge>
-          )}
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+          
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+            <FileText className="w-4 h-4" />
+          </Button>
         </div>
+
+  {/* Removed Topbar search */}
       </div>
 
-      <div className="flex items-center gap-2">
-        {/* Action Buttons */}
-  <Button variant="ghost" size="sm" onClick={saveToStorage}>
-          <Save className="w-4 h-4 mr-2" />
-          Save
+      {/* Right Side - Action Buttons */}
+      <div className="flex items-center gap-1">
+        {/* Horizontal dropdown to open right panel sections */}
+        <div className="mr-2">
+          <Menubar>
+            <MenubarMenu>
+              <MenubarTrigger className="h-8">Panels</MenubarTrigger>
+              <MenubarContent>
+                <MenubarItem onClick={() => openRightPanel('chat')}>Chat</MenubarItem>
+                <MenubarItem onClick={() => openRightPanel('console')}>Console</MenubarItem>
+                <MenubarItem onClick={() => openRightPanel('copilot')}>Copilot</MenubarItem>
+                <MenubarItem onClick={() => openRightPanel('variables')}>Variables</MenubarItem>
+              </MenubarContent>
+            </MenubarMenu>
+          </Menubar>
+        </div>
+        {/* Navigation */}
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <ChevronLeft className="w-4 h-4" />
         </Button>
 
-        <Button variant="ghost" size="sm">
-          <Undo className="w-4 h-4" />
+        {/* Action Icons - EXACTLY like sim.ai */}
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Trash2 className="w-4 h-4" />
+        </Button>
+        
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Sparkles className="w-4 h-4" />
+        </Button>
+        
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Printer className="w-4 h-4" />
+        </Button>
+        
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+          <Wand2 className="w-4 h-4" />
         </Button>
 
-        <Button variant="ghost" size="sm">
-          <Redo className="w-4 h-4" />
-        </Button>
+  {/* Removed duplicate right panel tabs from Topbar */}
 
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Execution Controls */}
+        {/* Big Purple Run Button - EXACTLY like sim.ai */}
         {isExecuting ? (
-          <Button variant="destructive" size="sm" onClick={handleStop}>
+          <Button variant="destructive" size="sm" className="h-8 px-6 ml-4">
             <Square className="w-4 h-4 mr-2" />
             Stop
           </Button>
         ) : (
-          <Button variant="default" size="sm" onClick={handleRun}>
+          <Button 
+            className="h-8 px-6 ml-4 bg-purple-600 hover:bg-purple-700 text-white"
+            onClick={onExecute}
+          >
             <Play className="w-4 h-4 mr-2" />
             Run
           </Button>
         )}
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* View Toggles */}
-        <Button 
-          variant={showExecutionLog ? "default" : "ghost"} 
-          size="sm"
-          onClick={toggleExecutionLog}
-        >
-          <FileText className="w-4 h-4 mr-2" />
-          Logs
-        </Button>
-
-        <Button 
-          variant={showCopilot ? "default" : "ghost"} 
-          size="sm"
-          onClick={toggleCopilot}
-        >
-          <MessageSquare className="w-4 h-4 mr-2" />
-          Copilot
-        </Button>
-
-        <div className="w-px h-6 bg-border mx-2" />
-
-        {/* Theme Toggle */}
-        <Button variant="ghost" size="sm" onClick={toggleDarkMode}>
-          {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </Button>
       </div>
     </div>
   );

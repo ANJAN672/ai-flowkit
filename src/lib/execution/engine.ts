@@ -32,7 +32,7 @@ export class ExecutionEngine {
       // Validate workflow
       this.validateWorkflow(workflow);
 
-      // Create execution context
+  // Create execution context
   const nodeOutputs: Record<string, Record<string, unknown>> = {};
       
       // Execute nodes in topological order (simplified for MVP)
@@ -58,7 +58,7 @@ export class ExecutionEngine {
         const node = workflow.nodes.find(n => n.id === nodeId);
         if (!node) continue;
 
-        await this.executeNode(workflow, node, execution, env, nodeOutputs);
+  await this.executeNode(workflow, node, execution, env, nodeOutputs);
 
         const nextNodes = this.getConnectedNodes(workflow, nodeId);
         for (const n of nextNodes) {
@@ -85,10 +85,10 @@ export class ExecutionEngine {
 
   private async executeNode(
     workflow: Workflow,
-  node: { id: string; type: string; data: Record<string, unknown> },
+    node: { id: string; type: string; data: Record<string, unknown> },
     execution: WorkflowExecution,
     env: Record<string, string>,
-  nodeOutputs: Record<string, Record<string, unknown>>
+    nodeOutputs: Record<string, Record<string, unknown>>
   ): Promise<void> {
     const nodeExecution: NodeExecution = {
       nodeId: node.id,
@@ -102,7 +102,7 @@ export class ExecutionEngine {
     try {
       this.log(execution, 'info', `Executing node: ${node.id}`, node.id);
 
-      const blockConfig = getBlockConfig(node.type);
+  const blockConfig = getBlockConfig(node.type);
       if (!blockConfig || !blockConfig.run) {
         throw new Error(`Block type ${node.type} not found or not executable`);
       }
@@ -113,13 +113,13 @@ export class ExecutionEngine {
         nodeId: node.id,
         inputs: node.data,
         env,
-        fetch: this.createFetchWithTimeout(),
-  log: (message: unknown) => this.log(execution, 'info', String(message), node.id),
+        fetch: this.createFetchWithTimeout(this.abortController!.signal),
+        log: (message: unknown) => this.log(execution, 'info', String(message), node.id),
         getNodeOutput: (nodeId: string, key?: string) => {
           const outputs = nodeOutputs[nodeId];
           return key ? outputs?.[key] : outputs;
         },
-  setNodeOutput: (key: string, value: unknown) => {
+        setNodeOutput: (key: string, value: unknown) => {
           if (!nodeOutputs[node.id]) {
             nodeOutputs[node.id] = {};
           }
@@ -132,9 +132,19 @@ export class ExecutionEngine {
       const result = await blockConfig.run(context);
 
       nodeExecution.status = 'success';
-      nodeExecution.outputs = result;
+      nodeExecution.outputs = (result && typeof result === 'object' && !Array.isArray(result))
+        ? (result as Record<string, unknown>)
+        : { value: result };
       nodeExecution.endTime = new Date().toISOString();
       nodeExecution.duration = new Date(nodeExecution.endTime).getTime() - new Date(nodeExecution.startTime).getTime();
+
+      // Auto-propagate object-like results to nodeOutputs so downstream nodes can read them via getNodeOutput
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        nodeOutputs[node.id] = {
+          ...(nodeOutputs[node.id] || {}),
+          ...(result as Record<string, unknown>),
+        };
+      }
 
       this.log(execution, 'info', `Node completed in ${nodeExecution.duration}ms`, node.id);
 
@@ -174,21 +184,30 @@ export class ExecutionEngine {
       .map(n => ({ id: n.id, type: n.type, data: n.data as Record<string, unknown> }));
   }
 
-  private createFetchWithTimeout(): typeof fetch {
+  private createFetchWithTimeout(engineSignal?: AbortSignal): typeof fetch {
     return async (input: RequestInfo | URL, init?: RequestInit) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
+      // Tie request to engine abort as well
+      const onEngineAbort = () => controller.abort();
       try {
+        if (engineSignal) {
+          if (engineSignal.aborted) controller.abort();
+          else engineSignal.addEventListener('abort', onEngineAbort);
+        }
+
         const response = await fetch(input, {
           ...init,
-          signal: controller.signal
+          signal: init?.signal ?? controller.signal,
         });
         clearTimeout(timeout);
         return response;
       } catch (error) {
         clearTimeout(timeout);
         throw error;
+      } finally {
+        if (engineSignal) engineSignal.removeEventListener('abort', onEngineAbort);
       }
     };
   }

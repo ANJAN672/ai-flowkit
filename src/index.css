@@ -202,6 +202,24 @@ All colors MUST be HSL.
   animation: pulse 1.5s ease-in-out infinite;
 }
 
+/* Flowing edge animation */
+.flow-edge {
+  stroke: hsl(var(--primary));
+  stroke-width: 2px;
+  stroke-dasharray: 6 6;
+  opacity: 0.6;
+}
+
+.flow-edge-animated {
+  opacity: 0.95;
+  animation: flow-dash 0.9s linear infinite;
+}
+
+@keyframes flow-dash {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -24; }
+}
+
 /* Hide native scrollbars but keep scrolling functional */
 .scrollbar-none {
   -ms-overflow-style: none; /* IE and Edge */

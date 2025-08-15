@@ -1,5 +1,9 @@
 import { Globe } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../types';
+
+const GlobeIcon: FC<{ size?: number }> = ({ size }) => createElement(Globe, { size });
 
 export const apiBlock: BlockConfig = {
   type: 'api',
@@ -7,7 +11,7 @@ export const apiBlock: BlockConfig = {
   description: 'Make HTTP requests to external APIs',
   category: 'blocks',
   bgColor: '#f59e0b',
-  icon: Globe,
+  icon: GlobeIcon,
   subBlocks: [
     {
       id: 'method',
@@ -76,19 +80,20 @@ export const apiBlock: BlockConfig = {
     error: { type: 'string', description: 'Error message if request failed' }
   },
   async run(ctx) {
-    const { method, url, headers = {}, body, timeout = 30000 } = ctx.inputs;
+  const { method, url, headers = {}, body, timeout = 30000 } = ctx.inputs as Record<string, unknown>;
     
     ctx.log(`Making ${method} request to ${url}`);
     
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const controller = new AbortController();
+  const timeoutMs = Number(timeout) || 30000;
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
       
       const requestOptions: RequestInit = {
-        method,
+        method: String(method),
         headers: {
           'Content-Type': 'application/json',
-          ...headers
+          ...(headers as Record<string, string>)
         },
         signal: controller.signal
       };
@@ -97,7 +102,7 @@ export const apiBlock: BlockConfig = {
         requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
       }
       
-      const response = await ctx.fetch(url, requestOptions);
+  const response = await ctx.fetch(String(url), requestOptions);
       clearTimeout(timeoutId);
       
       const responseHeaders: Record<string, string> = {};

@@ -1,5 +1,9 @@
 import { Play } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../types';
+
+const PlayIcon: FC<{ size?: number }> = ({ size }) => createElement(Play, { size });
 
 export const starterBlock: BlockConfig = {
   type: 'starter',
@@ -7,7 +11,7 @@ export const starterBlock: BlockConfig = {
   description: 'Entry point for the workflow',
   category: 'blocks',
   bgColor: '#10b981',
-  icon: Play,
+  icon: PlayIcon,
   inputs: {},
   outputs: {
     trigger: { type: 'any', description: 'Workflow started' },

@@ -10,7 +10,7 @@ const createIntegrationBlock = (
   additionalFields: Array<{
     id: string;
     title: string;
-    type: 'short-input' | 'long-input' | 'code' | 'slider' | 'combobox' | 'tool-input' | 'toggle' | 'number';
+    type: 'short-input' | 'long-input' | 'code' | 'slider' | 'combobox' | 'tool-input' | 'toggle' | 'number' | 'datetime';
     layout: 'full' | 'half';
     placeholder?: string;
     required?: boolean;
@@ -311,11 +311,94 @@ export const googleCalendarBlock = createIntegrationBlock(
   Calendar,
   [
     {
+      id: 'operation',
+      title: 'Operation',
+      type: 'combobox',
+      layout: 'full',
+      options: () => [
+        { id: 'create', label: 'Create Event' },
+        { id: 'update', label: 'Update Event' },
+        { id: 'delete', label: 'Delete Event' }
+      ],
+      required: true
+    },
+    {
+      id: 'account',
+      title: 'Google Calendar Account',
+      type: 'combobox',
+      layout: 'full',
+      options: () => [{ id: 'default', label: 'Select Google Calendar account' }],
+      required: true
+    },
+    {
       id: 'calendarId',
-      title: 'Calendar ID',
+      title: 'Calendar',
+      type: 'combobox',
+      layout: 'full',
+      options: () => [{ id: 'primary', label: 'Primary' }],
+      required: true
+    },
+    {
+      id: 'eventTitle',
+      title: 'Event Title',
       type: 'short-input',
       layout: 'full',
-      placeholder: 'primary'
+      placeholder: 'Meeting with team',
+      required: true
+    },
+    {
+      id: 'description',
+      title: 'Description',
+      type: 'long-input',
+      layout: 'full',
+      placeholder: 'Event description',
+      rows: 3
+    },
+    {
+      id: 'location',
+      title: 'Location',
+      type: 'short-input',
+      layout: 'full',
+      placeholder: 'Conference Room A'
+    },
+    {
+      id: 'startDateTime',
+      title: 'Start Date & Time',
+      type: 'datetime',
+      layout: 'half',
+      placeholder: '2025-06-03T10:00'
+    },
+    {
+      id: 'endDateTime',
+      title: 'End Date & Time',
+      type: 'datetime',
+      layout: 'half',
+      placeholder: '2025-06-03T11:00'
+    },
+    {
+      id: 'attendees',
+      title: 'Attendees (comma-separated emails)',
+      type: 'long-input',
+      layout: 'full',
+      placeholder: 'john@example.com, jane@example.com',
+      rows: 2
+    },
+    {
+      id: 'sendNotifications',
+      title: 'Send Email Notifications',
+      type: 'toggle',
+      layout: 'half'
+    },
+    {
+      id: 'notificationLevel',
+      title: 'Notification Recipients',
+      type: 'combobox',
+      layout: 'full',
+      options: () => [
+        { id: 'none', label: 'None' },
+        { id: 'all', label: 'All attendees (recommended)' },
+        { id: 'organizer', label: 'Organizer only' }
+      ]
     }
   ]
 );

@@ -176,6 +176,17 @@ export function DynamicForm({ fields, values, onChange }: DynamicFormProps) {
           />
         );
 
+      case 'datetime':
+        return (
+          <Input
+            id={field.id}
+            type="datetime-local"
+            value={String(value ?? '')}
+            onChange={(e) => updateValue(field.id, e.target.value)}
+            placeholder={field.placeholder}
+          />
+        );
+
       default:
         return (
           <Input

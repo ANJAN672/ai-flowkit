@@ -15,6 +15,10 @@ interface AppState {
   showExecutionLog: boolean;
   showCopilot: boolean;
   isDarkMode: boolean;
+
+  // Right panel
+  rightPanelOpen: boolean;
+  rightPanelTab: 'chat' | 'console' | 'copilot' | 'variables' | null;
   
   // Execution
   currentExecution: WorkflowExecution | null;
@@ -49,6 +53,11 @@ interface AppActions {
   toggleExecutionLog: () => void;
   toggleCopilot: () => void;
   toggleDarkMode: () => void;
+
+  // Right panel actions
+  openRightPanel: (tab: 'chat' | 'console' | 'copilot' | 'variables') => void;
+  closeRightPanel: () => void;
+  setRightPanelTab: (tab: 'chat' | 'console' | 'copilot' | 'variables') => void;
   
   // Execution actions
   startExecution: (workflowId: string) => Promise<void>;
@@ -81,6 +90,8 @@ export const useAppStore = create<AppState & AppActions>()(
       showExecutionLog: false,
       showCopilot: false,
       isDarkMode: false,
+  rightPanelOpen: false,
+  rightPanelTab: null,
       currentExecution: null,
       isExecuting: false,
       history: [],
@@ -251,6 +262,17 @@ export const useAppStore = create<AppState & AppActions>()(
         });
       },
 
+      // Right panel actions
+      openRightPanel: (tab) => {
+        set((state) => ({ ...state, rightPanelOpen: true, rightPanelTab: tab }));
+      },
+      closeRightPanel: () => {
+        set((state) => ({ ...state, rightPanelOpen: false }));
+      },
+      setRightPanelTab: (tab) => {
+        set((state) => ({ ...state, rightPanelTab: tab }));
+      },
+
       // Execution actions
   startExecution: async (workflowId: string) => {
         const state = get();
@@ -395,7 +417,16 @@ export const useAppStore = create<AppState & AppActions>()(
       // Storage actions
       loadFromStorage: () => {
         const data = loadFromStorage();
-        set((state) => ({ ...state, ...data }));
+        set((state) => {
+          const newState = { ...state, ...data };
+          // Apply dark mode class on load
+          if (newState.isDarkMode) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+          return newState;
+        });
       },
 
       saveToStorage: () => {

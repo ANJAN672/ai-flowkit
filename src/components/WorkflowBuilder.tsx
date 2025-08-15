@@ -9,8 +9,10 @@ import { Palette } from './Palette';
 import { Topbar } from './Topbar';
 import { ExecutionLog } from './ExecutionLog';
 import { Copilot } from './Copilot';
+import { RightPanel } from './RightPanel';
 import { getAllBlocks, getBlockConfig } from '@/lib/blocks/registry';
 import { WorkflowNode } from './nodes/WorkflowNode';
+import { FlowEdge } from './nodes/FlowEdge';
 import { executeWorkflow } from '@/lib/execution/engine';
 import type { Workflow as WorkflowType, WorkflowNode as WfNode, WorkflowEdge as WfEdge } from '@/lib/types';
 
@@ -18,150 +20,120 @@ import type { Workflow as WorkflowType, WorkflowNode as WfNode, WorkflowEdge as 
 // by mapping every block type to the same WorkflowNode component.
 // This fixes drag-and-drop for integration blocks too.
 const useDynamicNodeTypes = () =>
-  useMemo((): RFNodeTypes => {
-    const entries = getAllBlocks().map((b) => [b.type, WorkflowNode] as const);
-    // Ensure core types exist even if registry changes
-    const base: RFNodeTypes = {
-      starter: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-      agent: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-      api: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-      condition: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-      response: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-      function: WorkflowNode as unknown as ComponentType<RFNodeProps>,
-    };
-    for (const [key] of entries) base[key] = WorkflowNode as unknown as ComponentType<RFNodeProps>;
-    return base;
+  useMemo(() => {
+    const allBlocks = getAllBlocks();
+    const nodeTypes: RFNodeTypes = {};
+    
+    allBlocks.forEach(block => {
+      nodeTypes[block.type] = WorkflowNode as ComponentType<RFNodeProps>;
+    });
+    
+    return nodeTypes;
   }, []);
 
+const edgeTypes = {
+  default: FlowEdge,
+};
+
 export function WorkflowBuilder() {
-  const {
-    workspaces,
-    currentWorkspaceId,
-    currentWorkflowId,
+  const { 
+    workspaces, 
+    currentWorkspaceId, 
+    currentWorkflowId, 
+    isDarkMode,
+    setCurrentWorkspace,
     createWorkflow,
+    updateWorkflow,
+    deleteWorkflow,
     setCurrentWorkflow,
-  updateWorkflow,
-    showExecutionLog,
-    showCopilot,
-    isDarkMode
+    setSelectedNode,
+    isExecuting,
+    clearExecution,
+    addExecutionLog
   } = useAppStore();
 
-  const [nodes, setNodes, baseOnNodesChange] = useNodesState([]);
-  const [edges, setEdges, baseOnEdgesChange] = useEdgesState([]);
+  const nodeTypes = useDynamicNodeTypes();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  type RFInstance = ReactFlowInstance<Node, Edge>;
+  const [reactFlowInstance, setReactFlowInstance] = useState<RFInstance | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const currentWorkspace = workspaces.find(ws => ws.id === currentWorkspaceId);
   const currentWorkflow = currentWorkspace?.workflows.find(wf => wf.id === currentWorkflowId);
 
-  const nodeTypes = useDynamicNodeTypes();
-  type RFNode = Node<Record<string, unknown>, string>;
-  type RFEdge = Edge;
-  const rfInstance = useRef<ReactFlowInstance<RFNode, RFEdge> | null>(null);
+  // Check if user wants to restore full builder
+  const shouldRestoreFullBuilder = window.location.hash === '#restore-full-builder' || 
+                                   localStorage.getItem('ai-flowkit-force-full-builder') === 'true';
 
-  useEffect(() => {
-    if (currentWorkspace && !currentWorkflowId && currentWorkspace.workflows.length === 0) {
-      createWorkflow(currentWorkspace.id, 'New Workflow');
-    }
-  }, [currentWorkspace, currentWorkflowId, createWorkflow]);
+  // Decide whether to show recovery interface or the full builder (must not change hook order)
+  const showRecovery = !currentWorkspace || (!shouldRestoreFullBuilder && (!currentWorkflow || currentWorkflow.nodes.length === 0));
 
+  // Load workflow data into React Flow
   useEffect(() => {
     if (currentWorkflow) {
-      // Convert workflow nodes to React Flow nodes
-      const flowNodes = currentWorkflow.nodes.map(node => {
-        const blockConfig = getBlockConfig(node.type);
-        return {
-          id: node.id,
-          type: node.type,
-          position: node.position,
-          data: {
-            ...node.data,
-            label: blockConfig?.name || node.type,
-            blockConfig
-          }
-        };
-      });
-
+      const flowNodes = currentWorkflow.nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      }));
+      
+      const flowEdges = currentWorkflow.edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        targetHandle: edge.targetHandle,
+        type: 'default',
+      }));
+      
       setNodes(flowNodes);
-      setEdges(currentWorkflow.edges.map(edge => ({
-        ...edge,
-        animated: false
-      })));
+      setEdges(flowEdges);
     }
   }, [currentWorkflow, setNodes, setEdges]);
 
-  const onConnect = (params: Connection) => {
-  // Create a stable id for the new edge and update both UI and store
-  const edgeId = `e-${params.source}-${params.target}-${Date.now()}`;
-  setEdges((eds) => addEdge({ ...params, id: edgeId }, eds));
-  if (currentWorkspace && currentWorkflow && params.source && params.target) {
-    const newEdge: WfEdge = {
-      id: edgeId,
-      source: params.source,
-      target: params.target,
-      sourceHandle: params.sourceHandle,
-      targetHandle: params.targetHandle
+  // Save workflow changes
+  useEffect(() => {
+    if (currentWorkflow && reactFlowInstance) {
+      const workflowNodes: WfNode[] = nodes.map(node => ({
+        id: node.id,
+        type: node.type!,
+        position: node.position,
+        data: node.data || {},
+      }));
+      
+      const workflowEdges: WfEdge[] = edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle || undefined,
+        targetHandle: edge.targetHandle || undefined,
+      }));
+      
+      const updated: WorkflowType = {
+        ...currentWorkflow,
+        nodes: workflowNodes,
+        edges: workflowEdges,
+        updatedAt: new Date().toISOString(),
+      };
+      if (currentWorkspaceId) {
+        updateWorkflow(currentWorkspaceId, updated);
+      }
+    }
+  }, [nodes, edges, currentWorkflow, reactFlowInstance, updateWorkflow, currentWorkspaceId]);
+
+  const onConnect = (connection: Connection) => {
+    const edge = {
+      ...connection,
+      id: `edge-${connection.source}-${connection.target}`,
+      type: 'default',
     };
-    const updatedWf: WorkflowType = { ...currentWorkflow, edges: [...currentWorkflow.edges, newEdge] } as WorkflowType;
-    updateWorkflow(currentWorkspace.id, updatedWf);
-  }
+    setEdges(eds => addEdge(edge, eds));
   };
 
-  const onDrop = (event: React.DragEvent) => {
-    event.preventDefault();
-    const type = event.dataTransfer.getData('application/reactflow');
-    
-    if (!type) return;
-
-    const position = rfInstance.current
-      ? rfInstance.current.screenToFlowPosition({ x: event.clientX, y: event.clientY })
-      : { x: event.clientX, y: event.clientY };
-
-    const blockConfig = getBlockConfig(type);
-    const newNode: Node = {
-      id: `${type}-${Date.now()}`,
-      type,
-      position,
-      data: {
-        label: blockConfig?.name || type,
-        blockConfig,
-        // Initialize with default values
-        ...Object.fromEntries(
-          blockConfig?.subBlocks?.map(field => [field.id, '']) || []
-        )
-      }
-    };
-
-    setNodes((nds) => nds.concat(newNode));
-    // Persist newly added node to the store so engine sees it
-    if (currentWorkspace && currentWorkflow) {
-      // Strip UI-only fields
-      const { label: _label, blockConfig: _bc, ...persistData } = newNode.data as Record<string, unknown>;
-      const wfNode: WfNode = {
-        id: newNode.id,
-        type: newNode.type || 'default',
-        position: newNode.position,
-        data: { ...persistData } as Record<string, unknown>
-      };
-  const updatedNodes = [...currentWorkflow.nodes, wfNode];
-  const updatedEdges = [...currentWorkflow.edges];
-
-      // Auto-connect from starter to first dropped node if no connection exists yet
-      const starterId = currentWorkflow.starterId;
-      const hasStarter = updatedNodes.some(n => n.id === starterId);
-      const alreadyConnected = updatedEdges.some(e => e.source === starterId && e.target === wfNode.id);
-      if (hasStarter && !alreadyConnected && wfNode.id !== starterId) {
-        const newEdge: WfEdge = {
-          id: `e-${starterId}-${wfNode.id}-${Date.now()}`,
-          source: starterId,
-          target: wfNode.id
-        };
-        updatedEdges.push(newEdge);
-        // Also add to UI edges immediately
-        setEdges((eds) => addEdge({ id: newEdge.id, source: newEdge.source, target: newEdge.target }, eds));
-      }
-
-      const updatedWf: WorkflowType = { ...currentWorkflow, nodes: updatedNodes, edges: updatedEdges } as WorkflowType;
-      updateWorkflow(currentWorkspace.id, updatedWf);
-    }
+  const onNodeClick = (event: React.MouseEvent, node: Node) => {
+    setSelectedNode(node.id);
   };
 
   const onDragOver = (event: React.DragEvent) => {
@@ -169,42 +141,134 @@ export function WorkflowBuilder() {
     event.dataTransfer.dropEffect = 'move';
   };
 
-  // Persist node/edge changes back to the store
-  const onNodesChange: OnNodesChange = (changes: NodeChange[]) => {
-    baseOnNodesChange(changes);
-    if (!currentWorkspace || !currentWorkflow) return;
-    // React Flow already applied changes via baseOnNodesChange; pick up latest state next tick
-    queueMicrotask(() => {
-      const wfNodes: WfNode[] = (nodes as Node[]).map(n => {
-        const { label: _label, blockConfig: _bc, ...persistData } = (n.data as Record<string, unknown>) || {};
-        return {
-          id: n.id,
-          type: n.type || 'default',
-          position: n.position,
-          data: { ...persistData } as Record<string, unknown>
-        };
-      });
-      const updatedWf: WorkflowType = { ...currentWorkflow, nodes: wfNodes } as WorkflowType;
-      updateWorkflow(currentWorkspace.id, updatedWf);
+  const onDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+
+    if (!reactFlowInstance || !reactFlowWrapper.current) return;
+
+    const type = event.dataTransfer.getData('application/reactflow');
+    if (!type) return;
+
+    const rect = reactFlowWrapper.current.getBoundingClientRect();
+    const position = reactFlowInstance.screenToFlowPosition({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     });
+
+    const blockConfig = getBlockConfig(type);
+    if (!blockConfig) return;
+
+    const newNode: Node = {
+      id: `${type}-${Date.now()}`,
+      type,
+      position,
+      data: {
+        label: blockConfig.name,
+        ...Object.fromEntries(
+          blockConfig.subBlocks?.map(sb => [sb.id, '']) || []
+        ),
+      },
+    };
+
+    setNodes(nds => [...nds, newNode]);
   };
 
-  const onEdgesChange: OnEdgesChange = (changes: EdgeChange[]) => {
-    baseOnEdgesChange(changes);
-    if (!currentWorkspace || !currentWorkflow) return;
-    queueMicrotask(() => {
-      const wfEdges: WfEdge[] = (edges as Edge[]).map(e => ({
-        id: e.id!,
-        source: e.source,
-        target: e.target,
-        sourceHandle: e.sourceHandle,
-        targetHandle: e.targetHandle,
-        label: typeof (e as unknown as { label?: unknown }).label === 'string' ? (e as unknown as { label?: string }).label : undefined
-      }));
-      const updatedWf: WorkflowType = { ...currentWorkflow, edges: wfEdges } as WorkflowType;
-      updateWorkflow(currentWorkspace.id, updatedWf);
-    });
+  const handleExecuteWorkflow = async () => {
+    if (!currentWorkflow) return;
+    
+  clearExecution();
+    
+    try {
+      await executeWorkflow(
+        currentWorkflow,
+        {},
+        (log) => {
+          addExecutionLog(log);
+        }
+      );
+    } catch (error) {
+      addExecutionLog({
+        id: Date.now().toString(),
+        timestamp: new Date().toISOString(),
+        level: 'error',
+        message: `Execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        nodeId: undefined,
+      });
+    }
   };
+
+  const renderRecovery = () => (
+    <div className={`h-screen flex flex-col bg-background ${isDarkMode ? 'dark' : ''}`}>
+      <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4">
+        <h1 className="text-lg font-semibold">🎉 AI FlowKit - Recovery Mode</h1>
+        <p className="text-sm text-muted-foreground">Let's get your work back!</p>
+      </div>
+      <div className="flex-1 flex min-h-0">
+        <div className="w-80 h-full min-h-0 border-r border-border bg-card overflow-hidden p-4">
+          <h2 className="text-md font-medium mb-4">Data Recovery</h2>
+          <p className="text-sm text-muted-foreground mb-2">✅ Total Workspaces: {workspaces.length}</p>
+          <p className="text-sm text-muted-foreground mb-4">✅ Current: {currentWorkspace?.name || 'None'}</p>
+          <div className="space-y-2">
+            {workspaces.filter(ws => ws.workflows.length > 0).length > 0 ? (
+              <>
+                <h3 className="text-sm font-medium mb-2">Workspaces with Data:</h3>
+                {workspaces
+                  .filter(ws => ws.workflows.length > 0)
+                  .slice(0, 3)
+                  .map((ws, index) => (
+                    <button
+                      key={ws.id}
+                      onClick={() => {
+                        setCurrentWorkspace(ws.id);
+                        if (ws.workflows.length > 0) {
+                          setCurrentWorkflow(ws.workflows[0].id);
+                        }
+                        localStorage.setItem('ai-flowkit-force-full-builder', 'true');
+                        window.location.hash = 'restore-full-builder';
+                        setTimeout(() => window.location.reload(), 100);
+                      }}
+                      className="w-full p-3 text-left bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm mb-2"
+                    >
+                      <div className="font-medium text-blue-900">📁 {ws.name} #{index + 1}</div>
+                      <div className="text-blue-700 text-xs">{ws.workflows.length} workflows • {ws.workflows[0]?.nodes?.length || 0} nodes</div>
+                      <div className="text-blue-600 text-xs mt-1">Click to restore this workspace</div>
+                    </button>
+                  ))}
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground mb-4">No existing workflows found.</p>
+                <button
+                  onClick={() => {
+                    if (currentWorkspace && currentWorkspace.workflows.length === 0) {
+                      createWorkflow(currentWorkspace.id, 'New Workflow');
+                    }
+                    localStorage.setItem('ai-flowkit-force-full-builder', 'true');
+                    window.location.hash = 'restore-full-builder';
+                    setTimeout(() => window.location.reload(), 100);
+                  }}
+                  className="w-full p-3 bg-primary text-primary-foreground rounded font-medium"
+                >
+                  🚀 Start Fresh with Full AI FlowKit
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 relative min-h-0 flex items-center justify-center bg-canvas-bg">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold mb-2">Welcome Back to AI FlowKit!</h2>
+            <p className="text-muted-foreground mb-4">Your sim.ai-inspired workflow builder</p>
+            <p className="text-sm text-muted-foreground">Select a workspace or start fresh to continue</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (showRecovery) {
+    return renderRecovery();
+  }
 
   if (!currentWorkspace) {
     return (
@@ -219,58 +283,39 @@ export function WorkflowBuilder() {
 
   return (
     <div className={`h-screen flex flex-col bg-background ${isDarkMode ? 'dark' : ''}`}>
-      <Topbar />
+      <Topbar 
+        onExecute={handleExecuteWorkflow}
+        isExecuting={isExecuting}
+      />
       
-      <div className="flex-1 flex">
-  {/* Left Palette */}
-  <div className="w-80 h-full min-h-0 border-r border-border bg-card overflow-hidden">
-          <Palette />
-        </div>
-
-        {/* Center Canvas */}
-  <div className="flex-1 relative min-h-0">
+      <div className="flex-1 flex min-h-0">
+        <Palette />
+        
+        <div className="flex-1 relative min-h-0" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onInit={(instance) => setReactFlowInstance(instance as RFInstance)}
             onDrop={onDrop}
             onDragOver={onDragOver}
             nodeTypes={nodeTypes}
-            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-            onInit={(instance) => { rfInstance.current = instance as ReactFlowInstance<RFNode, RFEdge>; }}
+            edgeTypes={edgeTypes}
+            fitView={false}
             className="bg-canvas-bg"
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            minZoom={0.5}
+            maxZoom={2}
           >
-            <Background 
-              color="hsl(var(--canvas-grid))"
-              size={2}
-              gap={20}
-            />
-            <Controls />
-            <MiniMap 
-              nodeStrokeWidth={3}
-              nodeColor="hsl(var(--primary))"
-              className="bg-card border border-border rounded-lg"
-            />
+            <Background />
           </ReactFlow>
         </div>
-
-        {/* Right Panels (Logs top, Copilot bottom) */}
-        {(showExecutionLog || showCopilot) && (
-          <div className="w-80 border-l border-border bg-card flex flex-col">
-            {showExecutionLog && (
-              <div className={showCopilot ? "basis-2/3 min-h-[220px] border-b border-border" : "flex-1"}>
-                <ExecutionLog />
-              </div>
-            )}
-            {showCopilot && (
-              <div className={showExecutionLog ? "basis-1/3 min-h-[200px]" : "flex-1"}>
-                <Copilot />
-              </div>
-            )}
-          </div>
-        )}
+        
+  {/* Right panel renders only when opened from Topbar */}
+  <RightPanel />
       </div>
     </div>
   );

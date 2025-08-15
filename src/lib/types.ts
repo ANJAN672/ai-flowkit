@@ -10,7 +10,7 @@ export type FieldCondition =
 export type BlockField = {
   id: string;
   title: string;
-  type: 'short-input' | 'long-input' | 'code' | 'slider' | 'combobox' | 'tool-input' | 'toggle' | 'number';
+  type: 'short-input' | 'long-input' | 'code' | 'slider' | 'combobox' | 'tool-input' | 'toggle' | 'number' | 'datetime';
   layout: 'full' | 'half';
   placeholder?: string;
   rows?: number;
