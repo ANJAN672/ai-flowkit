@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 import { Workspace, Workflow, WorkflowExecution, ExecutionLog } from './types';
 import { loadFromStorage, saveToStorage } from './storage';
 
@@ -70,8 +69,7 @@ interface AppActions {
 
 export const useAppStore = create<AppState & AppActions>()(
   devtools(
-    subscribeWithSelector(
-      immer((set, get) => ({
+    subscribeWithSelector((set, get) => ({
         // Initial state
         workspaces: [],
         currentWorkspaceId: null,
@@ -96,133 +94,157 @@ export const useAppStore = create<AppState & AppActions>()(
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             };
-            state.workspaces.push(workspace);
-            state.currentWorkspaceId = workspace.id;
+            return {
+              ...state,
+              workspaces: [...state.workspaces, workspace],
+              currentWorkspaceId: workspace.id
+            };
           });
         },
 
         deleteWorkspace: (id: string) => {
           set((state) => {
-            state.workspaces = state.workspaces.filter(ws => ws.id !== id);
-            if (state.currentWorkspaceId === id) {
-              state.currentWorkspaceId = state.workspaces[0]?.id || null;
-              state.currentWorkflowId = null;
-            }
+            const newWorkspaces = state.workspaces.filter(ws => ws.id !== id);
+            return {
+              ...state,
+              workspaces: newWorkspaces,
+              currentWorkspaceId: state.currentWorkspaceId === id ? newWorkspaces[0]?.id || null : state.currentWorkspaceId,
+              currentWorkflowId: state.currentWorkspaceId === id ? null : state.currentWorkflowId
+            };
           });
         },
 
         renameWorkspace: (id: string, name: string) => {
-          set((state) => {
-            const workspace = state.workspaces.find(ws => ws.id === id);
-            if (workspace) {
-              workspace.name = name;
-              workspace.updatedAt = new Date().toISOString();
-            }
-          });
+          set((state) => ({
+            ...state,
+            workspaces: state.workspaces.map(ws =>
+              ws.id === id 
+                ? { ...ws, name, updatedAt: new Date().toISOString() }
+                : ws
+            )
+          }));
         },
 
         setCurrentWorkspace: (id: string) => {
-          set((state) => {
-            state.currentWorkspaceId = id;
-            state.currentWorkflowId = null;
-          });
+          set((state) => ({
+            ...state,
+            currentWorkspaceId: id,
+            currentWorkflowId: null
+          }));
         },
 
         // Workflow actions
         createWorkflow: (workspaceId: string, name: string) => {
           set((state) => {
-            const workspace = state.workspaces.find(ws => ws.id === workspaceId);
-            if (workspace) {
-              const workflow: Workflow = {
-                id: `wf-${Date.now()}`,
-                name,
-                nodes: [{
-                  id: 'starter',
-                  type: 'starter',
-                  position: { x: 100, y: 100 },
-                  data: {}
-                }],
-                edges: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                starterId: 'starter'
-              };
-              workspace.workflows.push(workflow);
-              workspace.updatedAt = new Date().toISOString();
-              state.currentWorkflowId = workflow.id;
-            }
+            const workflow: Workflow = {
+              id: `wf-${Date.now()}`,
+              name,
+              nodes: [{
+                id: 'starter',
+                type: 'starter',
+                position: { x: 100, y: 100 },
+                data: {}
+              }],
+              edges: [],
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              starterId: 'starter'
+            };
+
+            return {
+              ...state,
+              workspaces: state.workspaces.map(ws =>
+                ws.id === workspaceId
+                  ? {
+                      ...ws,
+                      workflows: [...ws.workflows, workflow],
+                      updatedAt: new Date().toISOString()
+                    }
+                  : ws
+              ),
+              currentWorkflowId: workflow.id
+            };
           });
         },
 
         deleteWorkflow: (workspaceId: string, workflowId: string) => {
-          set((state) => {
-            const workspace = state.workspaces.find(ws => ws.id === workspaceId);
-            if (workspace) {
-              workspace.workflows = workspace.workflows.filter(wf => wf.id !== workflowId);
-              workspace.updatedAt = new Date().toISOString();
-              if (state.currentWorkflowId === workflowId) {
-                state.currentWorkflowId = workspace.workflows[0]?.id || null;
-              }
-            }
-          });
+          set((state) => ({
+            ...state,
+            workspaces: state.workspaces.map(ws =>
+              ws.id === workspaceId
+                ? {
+                    ...ws,
+                    workflows: ws.workflows.filter(wf => wf.id !== workflowId),
+                    updatedAt: new Date().toISOString()
+                  }
+                : ws
+            ),
+            currentWorkflowId: state.currentWorkflowId === workflowId 
+              ? state.workspaces.find(ws => ws.id === workspaceId)?.workflows.filter(wf => wf.id !== workflowId)[0]?.id || null
+              : state.currentWorkflowId
+          }));
         },
 
         renameWorkflow: (workspaceId: string, workflowId: string, name: string) => {
-          set((state) => {
-            const workspace = state.workspaces.find(ws => ws.id === workspaceId);
-            const workflow = workspace?.workflows.find(wf => wf.id === workflowId);
-            if (workflow) {
-              workflow.name = name;
-              workflow.updatedAt = new Date().toISOString();
-              if (workspace) {
-                workspace.updatedAt = new Date().toISOString();
-              }
-            }
-          });
+          set((state) => ({
+            ...state,
+            workspaces: state.workspaces.map(ws =>
+              ws.id === workspaceId
+                ? {
+                    ...ws,
+                    workflows: ws.workflows.map(wf =>
+                      wf.id === workflowId
+                        ? { ...wf, name, updatedAt: new Date().toISOString() }
+                        : wf
+                    ),
+                    updatedAt: new Date().toISOString()
+                  }
+                : ws
+            )
+          }));
         },
 
         setCurrentWorkflow: (id: string) => {
-          set((state) => {
-            state.currentWorkflowId = id;
-          });
+          set((state) => ({ ...state, currentWorkflowId: id }));
         },
 
         updateWorkflow: (workspaceId: string, workflow: Workflow) => {
-          set((state) => {
-            const workspace = state.workspaces.find(ws => ws.id === workspaceId);
-            if (workspace) {
-              const index = workspace.workflows.findIndex(wf => wf.id === workflow.id);
-              if (index !== -1) {
-                workspace.workflows[index] = { ...workflow, updatedAt: new Date().toISOString() };
-                workspace.updatedAt = new Date().toISOString();
-              }
-            }
-          });
+          set((state) => ({
+            ...state,
+            workspaces: state.workspaces.map(ws =>
+              ws.id === workspaceId
+                ? {
+                    ...ws,
+                    workflows: ws.workflows.map(wf =>
+                      wf.id === workflow.id
+                        ? { ...workflow, updatedAt: new Date().toISOString() }
+                        : wf
+                    ),
+                    updatedAt: new Date().toISOString()
+                  }
+                : ws
+            )
+          }));
         },
 
         // UI actions
         setSelectedNode: (id: string | null) => {
-          set((state) => {
-            state.selectedNodeId = id;
-          });
+          set((state) => ({ ...state, selectedNodeId: id }));
         },
 
         toggleExecutionLog: () => {
-          set((state) => {
-            state.showExecutionLog = !state.showExecutionLog;
-          });
+          set((state) => ({ ...state, showExecutionLog: !state.showExecutionLog }));
         },
 
         toggleCopilot: () => {
-          set((state) => {
-            state.showCopilot = !state.showCopilot;
-          });
+          set((state) => ({ ...state, showCopilot: !state.showCopilot }));
         },
 
         toggleDarkMode: () => {
           set((state) => {
-            state.isDarkMode = !state.isDarkMode;
-            document.documentElement.classList.toggle('dark', state.isDarkMode);
+            const newDarkMode = !state.isDarkMode;
+            document.documentElement.classList.toggle('dark', newDarkMode);
+            return { ...state, isDarkMode: newDarkMode };
           });
         },
 
@@ -234,17 +256,20 @@ export const useAppStore = create<AppState & AppActions>()(
           
           if (!workflow) return;
 
-          set((state) => {
-            state.isExecuting = true;
-            state.currentExecution = {
-              id: `exec-${Date.now()}`,
-              workflowId,
-              status: 'running',
-              startTime: new Date().toISOString(),
-              logs: [],
-              nodeExecutions: {}
-            };
-          });
+          const execution: WorkflowExecution = {
+            id: `exec-${Date.now()}`,
+            workflowId,
+            status: 'running',
+            startTime: new Date().toISOString(),
+            logs: [],
+            nodeExecutions: {}
+          };
+
+          set((state) => ({
+            ...state,
+            isExecuting: true,
+            currentExecution: execution
+          }));
 
           // Import and run execution engine
           try {
@@ -252,54 +277,76 @@ export const useAppStore = create<AppState & AppActions>()(
             const result = await executeWorkflow(
               workflow,
               state.apiKeys,
-              (log) => state.addExecutionLog(log),
-              (nodeId, execution) => {
-                set((state) => {
-                  if (state.currentExecution) {
-                    state.currentExecution.nodeExecutions[nodeId] = execution;
-                  }
-                });
+              (log) => {
+                set((currentState) => ({
+                  ...currentState,
+                  currentExecution: currentState.currentExecution
+                    ? { ...currentState.currentExecution, logs: [...currentState.currentExecution.logs, log] }
+                    : null
+                }));
+              },
+              (nodeId, nodeExecution) => {
+                set((currentState) => ({
+                  ...currentState,
+                  currentExecution: currentState.currentExecution
+                    ? {
+                        ...currentState.currentExecution,
+                        nodeExecutions: { ...currentState.currentExecution.nodeExecutions, [nodeId]: nodeExecution }
+                      }
+                    : null
+                }));
               }
             );
             
-            set((state) => {
-              state.currentExecution = result;
-              state.isExecuting = false;
-            });
+            set((state) => ({
+              ...state,
+              currentExecution: result,
+              isExecuting: false
+            }));
           } catch (error) {
-            set((state) => {
-              if (state.currentExecution) {
-                state.currentExecution.status = 'error';
-                state.currentExecution.endTime = new Date().toISOString();
-              }
-              state.isExecuting = false;
-            });
+            set((state) => ({
+              ...state,
+              currentExecution: state.currentExecution
+                ? {
+                    ...state.currentExecution,
+                    status: 'error' as const,
+                    endTime: new Date().toISOString()
+                  }
+                : null,
+              isExecuting: false
+            }));
           }
         },
 
         stopExecution: () => {
-          set((state) => {
-            state.isExecuting = false;
-            if (state.currentExecution) {
-              state.currentExecution.status = 'cancelled';
-              state.currentExecution.endTime = new Date().toISOString();
-            }
-          });
+          set((state) => ({
+            ...state,
+            isExecuting: false,
+            currentExecution: state.currentExecution
+              ? {
+                  ...state.currentExecution,
+                  status: 'cancelled' as const,
+                  endTime: new Date().toISOString()
+                }
+              : null
+          }));
         },
 
         addExecutionLog: (log: ExecutionLog) => {
-          set((state) => {
-            if (state.currentExecution) {
-              state.currentExecution.logs.push(log);
-            }
-          });
+          set((state) => ({
+            ...state,
+            currentExecution: state.currentExecution
+              ? { ...state.currentExecution, logs: [...state.currentExecution.logs, log] }
+              : null
+          }));
         },
 
         clearExecution: () => {
-          set((state) => {
-            state.currentExecution = null;
-            state.isExecuting = false;
-          });
+          set((state) => ({
+            ...state,
+            currentExecution: null,
+            isExecuting: false
+          }));
         },
 
         // History actions (simplified for MVP)
@@ -317,23 +364,24 @@ export const useAppStore = create<AppState & AppActions>()(
 
         // Settings actions
         setApiKey: (provider: string, key: string) => {
-          set((state) => {
-            state.apiKeys[provider] = key;
-          });
+          set((state) => ({
+            ...state,
+            apiKeys: { ...state.apiKeys, [provider]: key }
+          }));
         },
 
         removeApiKey: (provider: string) => {
           set((state) => {
-            delete state.apiKeys[provider];
+            const newApiKeys = { ...state.apiKeys };
+            delete newApiKeys[provider];
+            return { ...state, apiKeys: newApiKeys };
           });
         },
 
         // Storage actions
         loadFromStorage: () => {
           const data = loadFromStorage();
-          set((state) => {
-            Object.assign(state, data);
-          });
+          set((state) => ({ ...state, ...data }));
         },
 
         saveToStorage: () => {
