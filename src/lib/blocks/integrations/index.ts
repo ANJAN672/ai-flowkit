@@ -3,12 +3,24 @@ import { createElement } from 'react';
 import type { FC } from 'react';
 import { BlockConfig } from '../../types';
 
+// Custom SVG logo component for integration blocks
+const createSvgIcon = (logoUrl: string, fallbackIcon = Plug): FC<{ size?: number }> => {
+  return ({ size = 24 }) => createElement('img', {
+    src: logoUrl,
+    alt: 'Logo',
+    width: size,
+    height: size,
+    style: { objectFit: 'contain' }
+  });
+};
+
 // Common integration configuration
 const createIntegrationBlock = (
   type: string,
   name: string,
   description: string,
-  icon = Plug,
+  logoUrl?: string,
+  fallbackIcon = Plug,
   additionalFields: Array<{
     id: string;
     title: string;
@@ -26,7 +38,7 @@ const createIntegrationBlock = (
   description,
   category: 'integrations',
   bgColor: '#ec4899', // Pink for integrations
-  icon: (({ size }) => createElement(icon, { size })) as FC<{ size?: number }>,
+  icon: logoUrl ? createSvgIcon(logoUrl, fallbackIcon) : (({ size }) => createElement(fallbackIcon, { size })) as FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'apiKey',
@@ -81,6 +93,7 @@ export const airtableBlock = createIntegrationBlock(
   'airtable',
   'Airtable',
   'Connect to Airtable bases and tables',
+  'https://www.vectorlogo.zone/logos/airtable/airtable-icon.svg',
   Database,
   [
     {
@@ -106,6 +119,7 @@ export const arxivBlock = createIntegrationBlock(
   'arxiv',
   'ArXiv',
   'Search and retrieve academic papers from ArXiv',
+  'https://arxiv.org/favicon.ico',
   FileText,
   [
     {
@@ -130,6 +144,7 @@ export const browserUseBlock = createIntegrationBlock(
   'browseruse',
   'BrowserUse',
   'Automate browser interactions and web scraping',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/googlechrome.svg',
   Globe
 );
 
@@ -137,6 +152,7 @@ export const clayBlock = createIntegrationBlock(
   'clay',
   'Clay',
   'Connect to Clay for data enrichment and workflows',
+  '/clay-logo.png',
   Database
 );
 
@@ -144,6 +160,7 @@ export const confluenceBlock = createIntegrationBlock(
   'confluence',
   'Confluence',
   'Access and manage Confluence pages and spaces',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/confluence.svg',
   FileText,
   [
     {
@@ -161,6 +178,7 @@ export const discordBlock = createIntegrationBlock(
   'discord',
   'Discord',
   'Send messages and manage Discord servers',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/discord.svg',
   MessageSquare,
   [
     {
@@ -177,6 +195,7 @@ export const elevenLabsBlock = createIntegrationBlock(
   'elevenlabs',
   'ElevenLabs',
   'Generate speech with AI voices',
+  'https://elevenlabs.io/favicon.ico',
   Bot,
   [
     {
@@ -203,6 +222,7 @@ export const exaBlock = createIntegrationBlock(
   'exa',
   'Exa',
   'Search the web with AI-powered search engine',
+  '/exa-logo.png',
   Search
 );
 
@@ -210,6 +230,7 @@ export const fileBlock = createIntegrationBlock(
   'file',
   'File',
   'Read and write files from various sources',
+  undefined,
   FileText,
   [
     {
@@ -238,6 +259,7 @@ export const firecrawlBlock = createIntegrationBlock(
   'firecrawl',
   'Firecrawl',
   'Scrape and crawl websites with AI',
+  'https://firecrawl.dev/favicon.ico',
   Globe,
   [
     {
@@ -255,6 +277,7 @@ export const githubBlock = createIntegrationBlock(
   'github',
   'GitHub',
   'Interact with GitHub repositories and issues',
+  'https://www.vectorlogo.zone/logos/github/github-icon.svg',
   Github,
   [
     {
@@ -272,6 +295,7 @@ export const gmailBlock = createIntegrationBlock(
   'gmail',
   'Gmail',
   'Send and manage Gmail emails',
+  'https://www.vectorlogo.zone/logos/gmail/gmail-icon.svg',
   Mail,
   [
     {
@@ -303,6 +327,7 @@ export const googleBlock = createIntegrationBlock(
   'google',
   'Google',
   'Access Google services and APIs',
+  'https://www.vectorlogo.zone/logos/google/google-icon.svg',
   Search
 );
 
@@ -310,6 +335,7 @@ export const googleCalendarBlock = createIntegrationBlock(
   'googlecalendar',
   'Google Calendar',
   'Manage Google Calendar events',
+  'https://calendar.google.com/googlecalendar/images/favicon_v2014_2.ico',
   Calendar,
   [
     {
@@ -409,6 +435,7 @@ export const googleDocsBlock = createIntegrationBlock(
   'googledocs',
   'Google Docs',
   'Create and edit Google Docs',
+  'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico',
   FileText
 );
 
@@ -416,6 +443,7 @@ export const googleDriveBlock = createIntegrationBlock(
   'googledrive',
   'Google Drive',
   'Access and manage Google Drive files',
+  'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png',
   Database
 );
 
@@ -423,6 +451,7 @@ export const googleSheetsBlock = createIntegrationBlock(
   'googlesheets',
   'Google Sheets',
   'Read and write Google Sheets data',
+  'https://ssl.gstatic.com/docs/spreadsheets/favicon3.ico',
   Database,
   [
     {
@@ -447,6 +476,7 @@ export const huggingFaceBlock = createIntegrationBlock(
   'huggingface',
   'HuggingFace',
   'Access HuggingFace models and datasets',
+  'https://huggingface.co/favicon.ico',
   Bot,
   [
     {
@@ -464,6 +494,7 @@ export const hunterBlock = createIntegrationBlock(
   'hunter',
   'Hunter',
   'Find email addresses with Hunter.io',
+  'https://hunter.io/favicon.ico',
   Search,
   [
     {
@@ -481,6 +512,7 @@ export const imageGeneratorBlock = createIntegrationBlock(
   'imagegenerator',
   'Image Generator',
   'Generate images with AI',
+  'https://openai.com/favicon.ico',
   Image,
   [
     {
@@ -510,6 +542,7 @@ export const jinaBlock = createIntegrationBlock(
   'jina',
   'Jina',
   'Use Jina AI for embeddings and search',
+  'https://jina.ai/favicon.ico',
   Bot
 );
 
@@ -517,6 +550,7 @@ export const jiraBlock = createIntegrationBlock(
   'jira',
   'Jira',
   'Manage Jira issues and projects',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/jira.svg',
   Zap,
   [
     {
@@ -541,6 +575,7 @@ export const linearBlock = createIntegrationBlock(
   'linear',
   'Linear',
   'Create and manage Linear issues',
+  'https://linear.app/favicon.ico',
   Zap,
   [
     {
@@ -553,10 +588,11 @@ export const linearBlock = createIntegrationBlock(
   ]
 );
 
-export const linkupBlock = createIntegrationBlock(
-  'linkup',
-  'Linkup',
+export const linkedInBlock = createIntegrationBlock(
+  'linkedin',
+  'LinkedIn',
   'Connect and manage professional networks',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/linkedin.svg',
   Users
 );
 
@@ -564,6 +600,7 @@ export const mem0Block = createIntegrationBlock(
   'mem0',
   'Mem0',
   'Store and retrieve AI memories',
+  'https://mem0.ai/favicon.ico',
   Database,
   [
     {
@@ -580,6 +617,7 @@ export const microsoftExcelBlock = createIntegrationBlock(
   'microsoftexcel',
   'Microsoft Excel',
   'Read and write Excel spreadsheets',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftexcel.svg',
   Database
 );
 
@@ -587,6 +625,7 @@ export const microsoftPlannerBlock = createIntegrationBlock(
   'microsoftplanner',
   'Microsoft Planner',
   'Manage Microsoft Planner tasks',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftexcel.svg',
   Calendar
 );
 
@@ -594,6 +633,7 @@ export const microsoftTeamsBlock = createIntegrationBlock(
   'microsoftteams',
   'Microsoft Teams',
   'Send messages and manage Teams',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftteams.svg',
   MessageSquare
 );
 
@@ -601,6 +641,7 @@ export const mistralParseBlock = createIntegrationBlock(
   'mistralparse',
   'Mistral Parse',
   'Parse documents with Mistral AI',
+  'https://mistral.ai/favicon.ico',
   FileText
 );
 
@@ -608,6 +649,7 @@ export const notionBlock = createIntegrationBlock(
   'notion',
   'Notion',
   'Read and write Notion pages and databases',
+  'https://notion.so/images/favicon.ico',
   Database,
   [
     {
@@ -624,6 +666,7 @@ export const oneDriveBlock = createIntegrationBlock(
   'onedrive',
   'OneDrive',
   'Access and manage OneDrive files',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftonedrive.svg',
   Database
 );
 
@@ -631,6 +674,7 @@ export const openAIBlock = createIntegrationBlock(
   'openai',
   'OpenAI',
   'Access OpenAI models and APIs',
+  'https://openai.com/favicon.ico',
   Bot,
   [
     {
@@ -651,6 +695,7 @@ export const outlookBlock = createIntegrationBlock(
   'outlook',
   'Outlook',
   'Send and manage Outlook emails',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftoutlook.svg',
   Mail
 );
 
@@ -658,6 +703,7 @@ export const perplexityBlock = createIntegrationBlock(
   'perplexity',
   'Perplexity',
   'Search with Perplexity AI',
+  'https://perplexity.ai/favicon.ico',
   Search
 );
 
@@ -665,6 +711,7 @@ export const pineconeBlock = createIntegrationBlock(
   'pinecone',
   'Pinecone',
   'Store and query vector embeddings',
+  'https://pinecone.io/favicon.ico',
   Database,
   [
     {
@@ -682,6 +729,7 @@ export const qdrantBlock = createIntegrationBlock(
   'qdrant',
   'Qdrant',
   'Vector database for AI applications',
+  'https://qdrant.tech/favicon.ico',
   Database
 );
 
@@ -689,6 +737,7 @@ export const redditBlock = createIntegrationBlock(
   'reddit',
   'Reddit',
   'Access Reddit posts and comments',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/reddit.svg',
   MessageSquare,
   [
     {
@@ -705,6 +754,7 @@ export const s3Block = createIntegrationBlock(
   's3',
   'AWS S3',
   'Store and retrieve files from Amazon S3',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/amazonwebservices.svg',
   Database,
   [
     {
@@ -729,6 +779,7 @@ export const serperBlock = createIntegrationBlock(
   'serper',
   'Serper',
   'Google search API integration',
+  'https://serper.dev/favicon.ico',
   Search
 );
 
@@ -736,6 +787,7 @@ export const sharePointBlock = createIntegrationBlock(
   'sharepoint',
   'SharePoint',
   'Access SharePoint sites and documents',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/microsoftsharepoint.svg',
   Database
 );
 
@@ -743,6 +795,7 @@ export const slackBlock = createIntegrationBlock(
   'slack',
   'Slack',
   'Send messages and manage Slack workspaces',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/slack.svg',
   MessageSquare,
   [
     {
@@ -759,6 +812,7 @@ export const stagehandBlock = createIntegrationBlock(
   'stagehand',
   'Stagehand',
   'Browser automation with AI',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/playwright.svg',
   Globe
 );
 
@@ -766,6 +820,7 @@ export const stagehandAgentBlock = createIntegrationBlock(
   'stagehandagent',
   'Stagehand Agent',
   'AI-powered browser automation agent',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/playwright.svg',
   Bot
 );
 
@@ -773,6 +828,7 @@ export const supabaseBlock = createIntegrationBlock(
   'supabase',
   'Supabase',
   'Interact with Supabase database and auth',
+  'https://www.vectorlogo.zone/logos/supabase/supabase-icon.svg',
   Database,
   [
     {
@@ -802,6 +858,7 @@ export const tavilyBlock = createIntegrationBlock(
   'tavily',
   'Tavily',
   'AI-powered web search and research',
+  'https://tavily.com/favicon.ico',
   Search
 );
 
@@ -809,6 +866,7 @@ export const telegramBlock = createIntegrationBlock(
   'telegram',
   'Telegram',
   'Send messages via Telegram bot',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/telegram.svg',
   MessageSquare,
   [
     {
@@ -825,6 +883,7 @@ export const thinkingBlock = createIntegrationBlock(
   'thinking',
   'Thinking',
   'AI reasoning and thought processes',
+  'https://openai.com/favicon.ico',
   Bot
 );
 
@@ -832,6 +891,7 @@ export const translateBlock = createIntegrationBlock(
   'translate',
   'Translate',
   'Translate text between languages',
+  'https://ssl.gstatic.com/translate/favicon.ico',
   Globe,
   [
     {
@@ -858,6 +918,7 @@ export const twilioBlock = createIntegrationBlock(
   'twilio',
   'Twilio',
   'Send SMS and make calls with Twilio',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/twilio.svg',
   Phone,
   [
     {
@@ -882,6 +943,7 @@ export const typeformBlock = createIntegrationBlock(
   'typeform',
   'Typeform',
   'Create and manage Typeform surveys',
+  'https://admin.typeform.com/favicon.ico',
   FileText
 );
 
@@ -889,6 +951,7 @@ export const visionBlock = createIntegrationBlock(
   'vision',
   'Vision',
   'Analyze images with AI vision models',
+  'https://ssl.gstatic.com/images/branding/product/1x/googleg_32dp.png',
   Image,
   [
     {
@@ -914,6 +977,7 @@ export const wealthboxBlock = createIntegrationBlock(
   'wealthbox',
   'Wealthbox',
   'Manage Wealthbox CRM data',
+  'https://wealthbox.com/favicon.ico',
   Users
 );
 
@@ -921,6 +985,7 @@ export const webhookBlock = createIntegrationBlock(
   'webhook',
   'Webhook',
   'Send HTTP webhooks to external services',
+  'https://webhook.site/favicon.ico',
   Zap,
   [
     {
@@ -957,6 +1022,7 @@ export const whatsappBlock = createIntegrationBlock(
   'whatsapp',
   'WhatsApp',
   'Send WhatsApp messages',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/whatsapp.svg',
   MessageSquare,
   [
     {
@@ -973,6 +1039,7 @@ export const wikipediaBlock = createIntegrationBlock(
   'wikipedia',
   'Wikipedia',
   'Search and retrieve Wikipedia articles',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/wikipedia.svg',
   Search,
   [
     {
@@ -990,6 +1057,7 @@ export const workflowBlock = createIntegrationBlock(
   'workflow',
   'Workflow',
   'Execute sub-workflows and nested processes',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/zapier.svg',
   Zap,
   [
     {
@@ -1007,6 +1075,7 @@ export const xBlock = createIntegrationBlock(
   'x',
   'X (Twitter)',
   'Post and manage X (Twitter) content',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/x.svg',
   MessageSquare,
   [
     {
@@ -1025,6 +1094,7 @@ export const youTubeBlock = createIntegrationBlock(
   'youtube',
   'YouTube',
   'Search and manage YouTube videos',
+  'https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/youtube.svg',
   Video,
   [
     {
@@ -1069,7 +1139,7 @@ export const integrationBlocks = {
   jina: jinaBlock,
   jira: jiraBlock,
   linear: linearBlock,
-  linkup: linkupBlock,
+  linkedin: linkedInBlock,
   mem0: mem0Block,
   microsoftexcel: microsoftExcelBlock,
   microsoftplanner: microsoftPlannerBlock,
