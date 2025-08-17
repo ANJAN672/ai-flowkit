@@ -1,13 +1,17 @@
 import { Code } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../types';
+
+const CodeIcon: FC<{ size?: number }> = ({ size }) => createElement(Code, { size });
 
 export const functionBlock: BlockConfig = {
   type: 'function',
   name: 'Custom Function',
   description: 'Execute custom JavaScript code',
   category: 'blocks',
-  bgColor: '#6366f1',
-  icon: Code as unknown as React.FC<{ size?: number }>,
+  bgColor: '#8b5cf6',
+  icon: CodeIcon,
   subBlocks: [
     {
       id: 'code',

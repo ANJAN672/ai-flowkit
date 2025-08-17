@@ -1,28 +1,33 @@
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+
 import { 
-  Home, 
-  Save, 
   Play, 
   Square, 
-  Undo, 
-  Redo, 
-  FileText, 
-  MessageSquare,
-  Moon,
-  Sun,
-  ChevronLeft,
-  ChevronDown,
   Trash2,
   Sparkles,
   Printer,
   Wand2,
-  Plus,
-  MoreHorizontal
+  MessageSquare,
+  Terminal,
+  Bot,
+  Settings,
+  Save,
+  Download,
+  Upload,
+  Zap,
+  Sun,
+  Moon,
+  MoreHorizontal,
+  ZoomIn,
+  ZoomOut,
+  ScanLine
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { Menubar, MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem } from '@/components/ui/menubar';
+import { toast } from '@/components/ui/use-toast';
+import { openaiService } from '@/lib/services/openai';
 
 interface TopbarProps {
   onExecute: () => void;
@@ -31,10 +36,14 @@ interface TopbarProps {
 
 export function Topbar({ onExecute, isExecuting }: TopbarProps) {
   const {
+    currentWorkflowId,
+    openRightPanel,
+    stopExecution,
+    startExecution,
+    setCopilotSeed,
+    selectedNodeId,
     workspaces,
     currentWorkspaceId,
-    currentWorkflowId,
-    setCurrentWorkspace,
     isDarkMode,
     toggleDarkMode,
     saveToStorage
@@ -42,93 +51,247 @@ export function Topbar({ onExecute, isExecuting }: TopbarProps) {
 
   const currentWorkspace = workspaces.find(ws => ws.id === currentWorkspaceId);
   const currentWorkflow = currentWorkspace?.workflows.find(wf => wf.id === currentWorkflowId);
-  const { openRightPanel } = useAppStore();
+
+  const handleDelete = () => {
+    const store = useAppStore.getState();
+    if (store.selectedNodeId) {
+      store.deleteSelectedNode();
+      toast({ 
+        title: 'Node deleted', 
+        description: 'The selected node has been removed from the workflow.' 
+      });
+    } else {
+      toast({ 
+        title: 'No selection', 
+        description: 'Please select a node to delete.' 
+      });
+    }
+  };
+
+  const handleSave = () => {
+    saveToStorage();
+    toast({ 
+      title: 'Saved', 
+      description: 'Your workflow has been saved successfully.' 
+    });
+  };
+
+  const handleExport = () => {
+    if (currentWorkflow) {
+      const dataStr = JSON.stringify(currentWorkflow, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+      const exportFileDefaultName = `${currentWorkflow.name || 'workflow'}.json`;
+      
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+      
+      toast({ 
+        title: 'Exported', 
+        description: 'Workflow exported successfully.' 
+      });
+    }
+  };
+
+  const handleAIAssist = () => {
+    setCopilotSeed("Help me improve this workflow and suggest optimizations");
+    openRightPanel('copilot');
+  };
 
   return (
     <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4">
-      {/* Left Side - Just Workspace */}
-      <div className="flex items-center gap-3">
-        {/* Workspace Selector - EXACTLY like sim.ai */}
-        <div className="flex items-center gap-2">
-          <Select value={currentWorkspaceId || ''} onValueChange={setCurrentWorkspace}>
-            <SelectTrigger className="w-48 h-8 bg-transparent border-none">
-              <SelectValue placeholder="ANJAN's Workspace" />
-            </SelectTrigger>
-            <SelectContent>
-              {workspaces.map((workspace) => (
-                <SelectItem key={workspace.id} value={workspace.id}>
-                  {workspace.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <ChevronDown className="w-4 h-4" />
-          </Button>
-          
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <FileText className="w-4 h-4" />
-          </Button>
+      {/* Left: AGEN8 brand + workflow info */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 select-none">
+          <img src="/favicon.ico" alt="AGEN8" className="w-5 h-5" />
+          <span className="text-sm font-semibold">AGEN8</span>
         </div>
-
-  {/* Removed Topbar search */}
+        
+        {currentWorkflow && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>•</span>
+            <span className="font-medium">{currentWorkflow.name}</span>
+            <Badge variant="outline" className="text-xs">
+              {currentWorkflow.nodes.length} blocks
+            </Badge>
+          </div>
+        )}
       </div>
 
       {/* Right Side - Action Buttons */}
       <div className="flex items-center gap-1">
-        {/* Horizontal dropdown to open right panel sections */}
-        <div className="mr-2">
-          <Menubar>
-            <MenubarMenu>
-              <MenubarTrigger className="h-8">Panels</MenubarTrigger>
-              <MenubarContent>
-                <MenubarItem onClick={() => openRightPanel('chat')}>Chat</MenubarItem>
-                <MenubarItem onClick={() => openRightPanel('console')}>Console</MenubarItem>
-                <MenubarItem onClick={() => openRightPanel('copilot')}>Copilot</MenubarItem>
-                <MenubarItem onClick={() => openRightPanel('variables')}>Variables</MenubarItem>
-              </MenubarContent>
-            </MenubarMenu>
-          </Menubar>
+        {/* Quick Actions */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleSave}>
+              <Save className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Save workflow</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleExport}>
+              <Download className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Export workflow</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Delete selected node</TooltipContent>
+        </Tooltip>
+
+        {/* Theme Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={toggleDarkMode}>
+              {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Toggle theme</TooltipContent>
+        </Tooltip>
+
+        {/* Canvas Controls */}
+        <div className="flex items-center gap-1 ml-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'zoomIn' } });
+                window.dispatchEvent(ev);
+              }}>
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom In</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'zoomOut' } });
+                window.dispatchEvent(ev);
+              }}>
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Zoom Out</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+                const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'autoArrange' } });
+                window.dispatchEvent(ev);
+              }}>
+                <ScanLine className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Auto Arrange</TooltipContent>
+          </Tooltip>
         </div>
-        {/* Navigation */}
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
 
-        {/* Action Icons - EXACTLY like sim.ai */}
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <Trash2 className="w-4 h-4" />
-        </Button>
-        
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <Sparkles className="w-4 h-4" />
-        </Button>
-        
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <Printer className="w-4 h-4" />
-        </Button>
-        
-        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-          <Wand2 className="w-4 h-4" />
-        </Button>
+        {/* Panel Buttons */}
+        <div className="flex items-center gap-1 ml-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openRightPanel('console')}>
+                <Terminal className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Console</TooltipContent>
+          </Tooltip>
 
-  {/* Removed duplicate right panel tabs from Topbar */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openRightPanel('variables')}>
+                <Settings className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Variables</TooltipContent>
+          </Tooltip>
 
-        {/* Big Purple Run Button - EXACTLY like sim.ai */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 w-8 p-0" 
+                onClick={() => openRightPanel('copilot')}
+              >
+                <Bot className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>AI Copilot</TooltipContent>
+          </Tooltip>
+        </div>
+
+
+
+        {/* More Actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => window.print()}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print workflow
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openRightPanel('chat')}>
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Open chat
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => toast({ title: 'Coming soon', description: 'This feature is in development' })}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Magic tools
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Run Button */}
         {isExecuting ? (
-          <Button variant="destructive" size="sm" className="h-8 px-6 ml-4">
-            <Square className="w-4 h-4 mr-2" />
-            Stop
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="destructive" size="sm" className="h-8 w-8 ml-2 p-0" onClick={stopExecution}>
+                <Square className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Stop</TooltipContent>
+          </Tooltip>
         ) : (
-          <Button 
-            className="h-8 px-6 ml-4 bg-purple-600 hover:bg-purple-700 text-white"
-            onClick={onExecute}
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Run
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                className="h-8 w-8 ml-2 p-0 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md"
+                onClick={() => {
+                  const store = useAppStore.getState();
+                  const wfId = store.currentWorkflowId;
+                  if (wfId) {
+                    store.openRightPanel('console');
+                    store.startExecution(wfId);
+                  } else {
+                    toast({ 
+                      title: 'No workflow', 
+                      description: 'Please create a workflow first.' 
+                    });
+                  }
+                }}
+                disabled={!currentWorkflow}
+              >
+                <Play className="w-4 h-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Run</TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>

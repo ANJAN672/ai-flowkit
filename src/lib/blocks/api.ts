@@ -10,7 +10,7 @@ export const apiBlock: BlockConfig = {
   name: 'HTTP Request',
   description: 'Make HTTP requests to external APIs',
   category: 'blocks',
-  bgColor: '#f59e0b',
+  bgColor: '#f97316',
   icon: GlobeIcon,
   subBlocks: [
     {
@@ -80,36 +80,59 @@ export const apiBlock: BlockConfig = {
     error: { type: 'string', description: 'Error message if request failed' }
   },
   async run(ctx) {
-  const { method, url, headers = {}, body, timeout = 30000 } = ctx.inputs as Record<string, unknown>;
-    
-    ctx.log(`Making ${method} request to ${url}`);
-    
+    const { method, url, headers = {}, body, timeout = 30000 } = ctx.inputs as Record<string, unknown>;
+
+    const allowed = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const;
+    const methodStr = String(method || 'GET').toUpperCase();
+    const finalMethod = (allowed as readonly string[]).includes(methodStr) ? methodStr : 'GET';
+    const urlStr = String(url || '').trim();
+
+    if (!urlStr) {
+      const msg = 'URL is required for HTTP Request block. Please set a valid URL.';
+      ctx.log(`Request failed: ${msg}`);
+      ctx.setNodeOutput('error', msg);
+      throw new Error(`HTTP request failed: ${msg}`);
+    }
+
+    let parsedHeaders: Record<string, string> = {};
+    if (typeof headers === 'string') {
+      try {
+        parsedHeaders = JSON.parse(headers);
+      } catch {
+        ctx.log('Warning: Headers is not valid JSON. It will be ignored.');
+      }
+    } else if (headers && typeof headers === 'object') {
+      parsedHeaders = headers as Record<string, string>;
+    }
+
+    ctx.log(`Making ${finalMethod} request to ${urlStr}`);
+
     try {
-  const controller = new AbortController();
-  const timeoutMs = Number(timeout) || 30000;
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-      
+      const controller = new AbortController();
+      const timeoutMs = Number(timeout) || 30000;
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
       const requestOptions: RequestInit = {
-        method: String(method),
+        method: finalMethod,
         headers: {
           'Content-Type': 'application/json',
-          ...(headers as Record<string, string>)
+          ...parsedHeaders,
         },
-        signal: controller.signal
+        signal: controller.signal,
       };
-      
-      if (body && method !== 'GET') {
+
+      if (body && finalMethod !== 'GET') {
         requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
       }
-      
-  const response = await ctx.fetch(String(url), requestOptions);
+
+      const response = await ctx.fetch(urlStr, requestOptions);
       clearTimeout(timeoutId);
-      
+
       const responseHeaders: Record<string, string> = {};
       response.headers.forEach((value, key) => {
         responseHeaders[key] = value;
       });
-      
+
       let data;
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
@@ -117,26 +140,26 @@ export const apiBlock: BlockConfig = {
       } else {
         data = await response.text();
       }
-      
+
       const result = {
         status: response.status,
         headers: responseHeaders,
-        data
+        data,
       };
-      
+
       ctx.setNodeOutput('status', result.status);
       ctx.setNodeOutput('headers', result.headers);
       ctx.setNodeOutput('data', result.data);
-      
+
       ctx.log(`Request completed with status ${response.status}`);
-      
+
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       ctx.log(`Request failed: ${errorMessage}`);
-      
+
       ctx.setNodeOutput('error', errorMessage);
-      
+
       throw new Error(`HTTP request failed: ${errorMessage}`);
     }
   }

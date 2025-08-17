@@ -6,7 +6,7 @@ export const conditionBlock: BlockConfig = {
   name: 'Condition',
   description: 'Branch workflow based on conditions',
   category: 'control',
-  bgColor: '#8b5cf6',
+  bgColor: '#a855f7',
   icon: GitBranch as unknown as React.FC<{ size?: number }>,
   subBlocks: [
     {

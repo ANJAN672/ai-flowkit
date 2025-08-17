@@ -1,13 +1,17 @@
 import { CheckCircle } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../types';
+
+const CheckIcon: FC<{ size?: number }> = ({ size }) => createElement(CheckCircle, { size });
 
 export const responseBlock: BlockConfig = {
   type: 'response',
   name: 'Response',
   description: 'Final output of the workflow',
   category: 'io',
-  bgColor: '#10b981',
-  icon: CheckCircle as unknown as React.FC<{ size?: number }>,
+  bgColor: '#22c55e',
+  icon: CheckIcon,
   subBlocks: [
     {
       id: 'message',

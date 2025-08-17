@@ -1,4 +1,6 @@
 import { Plug, Database, FileText, Bot, Mail, Calendar, Users, Github, Search, Image, Phone, MessageSquare, Globe, Video, Zap } from 'lucide-react';
+import { createElement } from 'react';
+import type { FC } from 'react';
 import { BlockConfig } from '../../types';
 
 // Common integration configuration
@@ -23,8 +25,8 @@ const createIntegrationBlock = (
   name,
   description,
   category: 'integrations',
-  bgColor: '#06b6d4', // Light blue for integrations
-  icon: icon as unknown as React.FC<{ size?: number }>,
+  bgColor: '#ec4899', // Pink for integrations
+  icon: (({ size }) => createElement(icon, { size })) as FC<{ size?: number }>,
   subBlocks: [
     {
       id: 'apiKey',

@@ -15,10 +15,15 @@ interface AppState {
   showExecutionLog: boolean;
   showCopilot: boolean;
   isDarkMode: boolean;
+  leftSidebarVisible: boolean;
+  leftSidebarCollapsed: boolean;
 
   // Right panel
   rightPanelOpen: boolean;
   rightPanelTab: 'chat' | 'console' | 'copilot' | 'variables' | null;
+  
+  // Copilot seed prompt
+  copilotSeed: string | null;
   
   // Execution
   currentExecution: WorkflowExecution | null;
@@ -32,6 +37,9 @@ interface AppState {
   
   // Settings
   apiKeys: Record<string, string>;
+
+  // Editing guard
+  isNodeEditing: boolean;
 }
 
 interface AppActions {
@@ -47,17 +55,31 @@ interface AppActions {
   renameWorkflow: (workspaceId: string, workflowId: string, name: string) => void;
   setCurrentWorkflow: (id: string) => void;
   updateWorkflow: (workspaceId: string, workflow: Workflow) => void;
+
+  // Workflow variables
+  setWorkflowVariable: (key: string, value: string) => void;
+  removeWorkflowVariable: (key: string) => void;
+  clearWorkflowVariables: () => void;
   
   // UI actions
   setSelectedNode: (id: string | null) => void;
+  deleteSelectedNode: () => void;
   toggleExecutionLog: () => void;
   toggleCopilot: () => void;
   toggleDarkMode: () => void;
+  toggleLeftSidebar: () => void;
+  toggleLeftSidebarCollapsed: () => void;
 
   // Right panel actions
   openRightPanel: (tab: 'chat' | 'console' | 'copilot' | 'variables') => void;
   closeRightPanel: () => void;
   setRightPanelTab: (tab: 'chat' | 'console' | 'copilot' | 'variables') => void;
+  
+  // Copilot actions
+  setCopilotSeed: (seed: string | null) => void;
+  
+  // Node editing guard
+  setIsNodeEditing: (v: boolean) => void;
   
   // Execution actions
   startExecution: (workflowId: string) => Promise<void>;
@@ -90,13 +112,17 @@ export const useAppStore = create<AppState & AppActions>()(
       showExecutionLog: false,
       showCopilot: false,
       isDarkMode: false,
-  rightPanelOpen: false,
-  rightPanelTab: null,
+      leftSidebarVisible: true,
+      leftSidebarCollapsed: false, 
+      rightPanelOpen: false,
+      rightPanelTab: null,
+      copilotSeed: null,
       currentExecution: null,
       isExecuting: false,
       history: [],
       historyIndex: -1,
       apiKeys: {},
+      isNodeEditing: false,
 
       // Workspace actions
       createWorkspace: (name: string) => {
@@ -162,7 +188,8 @@ export const useAppStore = create<AppState & AppActions>()(
             edges: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            starterId: 'starter'
+            starterId: 'starter',
+            variables: {}
           };
 
           return {
@@ -246,6 +273,45 @@ export const useAppStore = create<AppState & AppActions>()(
         set((state) => ({ ...state, selectedNodeId: id }));
       },
 
+      deleteSelectedNode: () => {
+        set((state) => {
+          const selectedId = state.selectedNodeId;
+          if (!selectedId || !state.currentWorkspaceId || !state.currentWorkflowId) {
+            return state;
+          }
+
+          const newWorkspaces = state.workspaces.map(ws => {
+            if (ws.id !== state.currentWorkspaceId) return ws;
+            return {
+              ...ws,
+              workflows: ws.workflows.map(wf => {
+                if (wf.id !== state.currentWorkflowId) return wf;
+                // Prevent deleting the starter node
+                if (selectedId === wf.starterId) {
+                  return { ...wf }; // no-op
+                }
+                // Filter out the selected node and related edges
+                const filteredNodes = wf.nodes.filter(n => n.id !== selectedId);
+                const filteredEdges = wf.edges.filter(e => e.source !== selectedId && e.target !== selectedId);
+                return {
+                  ...wf,
+                  nodes: filteredNodes,
+                  edges: filteredEdges,
+                  updatedAt: new Date().toISOString(),
+                };
+              }),
+              updatedAt: new Date().toISOString(),
+            };
+          });
+
+          return {
+            ...state,
+            workspaces: newWorkspaces,
+            selectedNodeId: null,
+          };
+        });
+      },
+
       toggleExecutionLog: () => {
         set((state) => ({ ...state, showExecutionLog: !state.showExecutionLog }));
       },
@@ -262,6 +328,13 @@ export const useAppStore = create<AppState & AppActions>()(
         });
       },
 
+      toggleLeftSidebar: () => {
+        set((state) => ({ ...state, leftSidebarVisible: !state.leftSidebarVisible }));
+      },
+      toggleLeftSidebarCollapsed: () => {
+        set((state) => ({ ...state, leftSidebarCollapsed: !state.leftSidebarCollapsed }));
+      },
+
       // Right panel actions
       openRightPanel: (tab) => {
         set((state) => ({ ...state, rightPanelOpen: true, rightPanelTab: tab }));
@@ -271,6 +344,70 @@ export const useAppStore = create<AppState & AppActions>()(
       },
       setRightPanelTab: (tab) => {
         set((state) => ({ ...state, rightPanelTab: tab }));
+      },
+
+      // Copilot actions
+      setCopilotSeed: (seed) => {
+        set((state) => ({ ...state, copilotSeed: seed }));
+      },
+
+      // Node editing guard
+      setIsNodeEditing: (v) => {
+        set((state) => ({ ...state, isNodeEditing: v }));
+      },
+
+      // Workflow variables
+      setWorkflowVariable: (key, value) => {
+        set((state) => {
+          if (!state.currentWorkspaceId || !state.currentWorkflowId) return state;
+          return {
+            ...state,
+            workspaces: state.workspaces.map(ws => ws.id !== state.currentWorkspaceId ? ws : ({
+              ...ws,
+              workflows: ws.workflows.map(wf => wf.id !== state.currentWorkflowId ? wf : ({
+                ...wf,
+                variables: { ...(wf.variables || {}), [key]: value },
+                updatedAt: new Date().toISOString()
+              })),
+              updatedAt: new Date().toISOString()
+            }))
+          };
+        });
+      },
+      removeWorkflowVariable: (key) => {
+        set((state) => {
+          if (!state.currentWorkspaceId || !state.currentWorkflowId) return state;
+          return {
+            ...state,
+            workspaces: state.workspaces.map(ws => ws.id !== state.currentWorkspaceId ? ws : ({
+              ...ws,
+              workflows: ws.workflows.map(wf => {
+                if (wf.id !== state.currentWorkflowId) return wf;
+                const vars = { ...(wf.variables || {}) };
+                delete vars[key];
+                return { ...wf, variables: vars, updatedAt: new Date().toISOString() };
+              }),
+              updatedAt: new Date().toISOString()
+            }))
+          };
+        });
+      },
+      clearWorkflowVariables: () => {
+        set((state) => {
+          if (!state.currentWorkspaceId || !state.currentWorkflowId) return state;
+          return {
+            ...state,
+            workspaces: state.workspaces.map(ws => ws.id !== state.currentWorkspaceId ? ws : ({
+              ...ws,
+              workflows: ws.workflows.map(wf => wf.id !== state.currentWorkflowId ? wf : ({
+                ...wf,
+                variables: {},
+                updatedAt: new Date().toISOString()
+              })),
+              updatedAt: new Date().toISOString()
+            }))
+          };
+        });
       },
 
       // Execution actions

@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'sim-ai-workflow-builder';
+const STORAGE_KEY = 'AGEN8-storage';
 
 export interface StoredData {
   workspaces: Array<{
@@ -12,6 +12,7 @@ export interface StoredData {
       createdAt: string;
       updatedAt: string;
       starterId: string;
+      variables?: Record<string, string>;
     }>;
     createdAt: string;
     updatedAt: string;

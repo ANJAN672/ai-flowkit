@@ -10,7 +10,7 @@ export const starterBlock: BlockConfig = {
   name: 'Start',
   description: 'Entry point for the workflow',
   category: 'blocks',
-  bgColor: '#10b981',
+  bgColor: '#06b6d4',
   icon: PlayIcon,
   inputs: {},
   outputs: {

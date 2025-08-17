@@ -1,40 +1,64 @@
-# Welcome to your Lovable project
+# AGEN8
 
-## Project info
+🚀 **Advanced Visual AI Workflow Builder** with autonomous copilot and drag-and-drop blocks.
 
-**URL**: https://lovable.dev/projects/b1a8eecf-eb2e-4d6e-b5cb-247f65840385
+## ✨ Features
 
-## How can I edit this code?
+- **🤖 AI-Powered Copilot**: Autonomous workflow creation using OpenAI GPT-4o-mini
+- **🎨 Modern UI/UX**: Enhanced design with tooltips, animations, and responsive layouts  
+- **🔧 Dynamic Blocks**: Comprehensive block library with real-time configuration
+- **⚡ Real-time Execution**: Live workflow execution with status tracking
+- **💾 Auto-save**: Automatic persistence with localStorage
+- **🌙 Dark/Light Mode**: Full theme support
+- **📱 Responsive**: Works on desktop and tablet devices
 
-There are several ways of editing your application.
+### 1. Clone and Install
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/b1a8eecf-eb2e-4d6e-b5cb-247f65840385) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone the repository
 git clone <YOUR_GIT_URL>
+cd ai-flowkit
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Install dependencies
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Configure OpenAI API
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Create a `.env.local` file in the root directory:
+
+```env
+# OpenAI API Configuration (Required for AI Copilot)
+VITE_OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Optional: Custom API endpoint
+VITE_OPENAI_API_URL=https://api.openai.com/v1
+
+# Default model for copilot (cost-efficient)
+VITE_DEFAULT_MODEL=gpt-4o-mini
+```
+
+### 3. Start Development Server
+
+```bash
 npm run dev
 ```
+
+Open [http://localhost:5173](http://localhost:5173) to view the application.
+
+## 🤖 AI Copilot Usage
+
+The AI Copilot can autonomously create workflows for you:
+
+1. **Open Copilot**: Click the AI Copilot button in the top bar or press `Ctrl+K`
+2. **Describe Your Workflow**: Type what you want to build, e.g.:
+   - "Create a customer support chatbot"
+   - "Build an API data processor with email notifications"
+   - "Make a content analysis workflow"
+3. **Watch It Build**: The AI will automatically select blocks, configure them, and connect them
+4. **Customize**: Modify the generated workflow as needed
+
+## 🔧 Development
 
 **Edit a file directly in GitHub**
 

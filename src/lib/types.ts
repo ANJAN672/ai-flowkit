@@ -98,6 +98,7 @@ export type Workflow = {
   createdAt: string;
   updatedAt: string;
   starterId: string;
+  variables?: Record<string, string>;
 };
 
 export type Workspace = {
