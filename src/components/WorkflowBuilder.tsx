@@ -150,7 +150,8 @@ export function WorkflowBuilder() {
   const [isSpacePressed, setIsSpacePressed] = useState(false);
   const isSpacePressedRef = useRef(false);
 
-  // Prevent deleting the starter node via keyboard/backspace in canvas
+
+  // Simple node change handler - prevent starter deletion only
   const onNodesChangeSafe: OnNodesChange = (changes) => {
     const filtered = changes.filter((ch) => {
       if (ch.type !== 'remove') return true;
@@ -239,7 +240,7 @@ export function WorkflowBuilder() {
     }
   }, [currentWorkflow, setNodes, setEdges, currentWorkspaceId, updateWorkflow, reactFlowInstance]);
 
-  // Save workflow changes (avoid loops while typing)
+  // Simple save workflow changes
   useEffect(() => {
     if (!currentWorkflow || !reactFlowInstance) return;
 
@@ -721,6 +722,10 @@ export function WorkflowBuilder() {
             snapToGrid={true}
             snapGrid={[16, 16]}
             proOptions={{ hideAttribution: true }}
+            // Basic performance optimizations
+            deleteKeyCode={['Backspace', 'Delete']}
+            multiSelectionKeyCode={['Meta', 'Ctrl']}
+            selectionKeyCode={['Shift']}
           >
             <Background 
               color="#e5e7eb" 

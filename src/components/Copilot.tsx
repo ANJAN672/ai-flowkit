@@ -34,7 +34,7 @@ export function Copilot() {
       id: 'welcome',
       role: 'assistant',
       content: openaiService.isConfigured() 
-        ? 'Hi! I\'m your AI workflow copilot. I can autonomously create complete workflows for you. Just describe what you want to build, and I\'ll create the blocks and connections automatically!' 
+        ? '👋 Hi! I\'m your AI workflow copilot. I can autonomously create complete workflows for you.\n\n✨ **What I can do:**\n• Create workflows from natural language\n• Suggest optimizations\n• Help with block configuration\n• Answer workflow questions\n\nJust describe what you want to build!' 
         : 'Hi! I\'m your workflow copilot, but I need an OpenAI API key to function. Please configure your API key in the .env.local file.',
       timestamp: new Date().toISOString()
     }
@@ -42,6 +42,7 @@ export function Copilot() {
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCreatingWorkflow, setIsCreatingWorkflow] = useState(false);
+  const [typingIndicator, setTypingIndicator] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -54,6 +55,13 @@ export function Copilot() {
       }
     }
   }, [messages]);
+
+  // Auto-focus input when component mounts
+  useEffect(() => {
+    if (textareaRef.current && openaiService.isConfigured()) {
+      textareaRef.current.focus();
+    }
+  }, []);
 
   // Keep a stable ref to the sender to avoid effect dependencies noise
   const handleSendMessageRef = useRef<(messageContent?: string) => Promise<void>>();
@@ -80,12 +88,30 @@ export function Copilot() {
 
     setMessages(prev => [...prev, userMessage]);
     if (messageContent === undefined) setInput('');
-    setIsGenerating(true);
+    
+    // Show immediate typing indicator
+    setTypingIndicator(true);
+    
+    // Small delay to show responsiveness
+    setTimeout(() => {
+      setTypingIndicator(false);
+      setIsGenerating(true);
+    }, 300);
 
     try {
       // Check if user wants to create a workflow
       const lc = content.toLowerCase();
-      const isWorkflowRequest = lc.includes('create') || lc.includes('build') || lc.includes('make') || lc.includes('workflow');
+      const workflowKeywords = [
+        'create', 'build', 'make', 'workflow', 'generate', 'automation', 'automate', 
+        'connect', 'integrate', 'process', 'analyze', 'fetch', 'send', 'store',
+        'youtube', 'google', 'api', 'database', 'email', 'notification', 'report',
+        'chatbot', 'data analysis', 'content', 'social media', 'e-commerce'
+      ];
+      const isWorkflowRequest = workflowKeywords.some(keyword => lc.includes(keyword)) || 
+                               lc.includes(' to ') || // "connect X to Y"
+                               lc.includes(' with ') || // "integrate X with Y"
+                               lc.includes(' from ') || // "fetch data from X"
+                               lc.includes(' and '); // "do X and Y"
 
       if (isWorkflowRequest && openaiService.isConfigured()) {
         await handleWorkflowGeneration(content, userMessage);
@@ -97,12 +123,13 @@ export function Copilot() {
       const errorMessage: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: `I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+        content: `❌ I encountered an error: ${error instanceof Error ? error.message : 'Unknown error'}.\n\nLet me try a different approach. Could you rephrase your request?`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsGenerating(false);
+      setTypingIndicator(false);
     }
   };
 
@@ -116,7 +143,7 @@ export function Copilot() {
       .filter(m => m.id !== 'welcome' && m.role !== 'user' || m.id !== userMessage.id)
       .map(m => ({ role: m.role, content: m.content }));
 
-    // Create streaming message
+    // Create streaming message immediately
     const streamingMessage: ChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
@@ -128,23 +155,31 @@ export function Copilot() {
     setMessages(prev => [...prev, streamingMessage]);
 
     let fullContent = '';
+    let lastUpdateTime = Date.now();
+    
     await copilotService.streamChatWithContext(
       content,
       conversationHistory,
       (chunk) => {
         fullContent += chunk;
-        setMessages(prev => prev.map(m => 
-          m.id === streamingMessage.id 
-            ? { ...m, content: fullContent }
-            : m
-        ));
+        const now = Date.now();
+        
+        // Throttle updates for better performance (update every 50ms max)
+        if (now - lastUpdateTime > 50) {
+          setMessages(prev => prev.map(m => 
+            m.id === streamingMessage.id 
+              ? { ...m, content: fullContent }
+              : m
+          ));
+          lastUpdateTime = now;
+        }
       }
     );
 
-    // Mark streaming as complete
+    // Final update to ensure all content is shown
     setMessages(prev => prev.map(m => 
       m.id === streamingMessage.id 
-        ? { ...m, isStreaming: false }
+        ? { ...m, content: fullContent, isStreaming: false }
         : m
     ));
   };
@@ -153,18 +188,28 @@ export function Copilot() {
     setIsCreatingWorkflow(true);
     
     try {
-      // Generate workflow plan
-      const plan = await copilotService.generateWorkflowPlan(content);
-      
-      // Create explanation message
-      const explanationMessage: ChatMessage = {
-        id: `explanation-${Date.now()}`,
+      // Show immediate planning message
+      const planningMessage: ChatMessage = {
+        id: `planning-${Date.now()}`,
         role: 'assistant',
-        content: `I'll create a workflow for you: "${plan.description}"\n\nLet me build this automatically...`,
+        content: `🧠 **Analyzing your request...**\n\nI'm planning the perfect workflow for: "${content}"\n\n⚡ This will take just a moment...`,
         timestamp: new Date().toISOString()
       };
       
-      setMessages(prev => [...prev, explanationMessage]);
+      setMessages(prev => [...prev, planningMessage]);
+      
+      // Generate workflow plan
+      const plan = await copilotService.generateWorkflowPlan(content);
+      
+      // Update planning message to show what we're building
+      setMessages(prev => prev.map(m => 
+        m.id === planningMessage.id 
+          ? { 
+              ...m, 
+              content: `🎯 **Workflow Plan Ready!**\n\n**"${plan.description}"**\n\n🔧 **Building blocks:**\n${plan.blocks.map(b => `• ${b.name}`).join('\n')}\n\n⚡ **Creating workflow now...**`
+            }
+          : m
+      ));
       
       // Implement the workflow
       const { nodes, edges } = await copilotService.implementWorkflowPlan(plan);
@@ -186,11 +231,11 @@ export function Copilot() {
         }
       }
       
-      // Success message
+      // Success message with better formatting
       const successMessage: ChatMessage = {
         id: `success-${Date.now()}`,
         role: 'assistant',
-        content: `✅ Workflow created successfully! I've added ${nodes.length} blocks and ${edges.length} connections to your canvas. The workflow includes:\n\n${plan.blocks.map(b => `• ${b.name}: ${b.description}`).join('\n')}\n\nYou can now run the workflow or modify the blocks as needed!`,
+        content: `🎉 **Workflow Created Successfully!**\n\n📊 **Added to canvas:**\n• ${nodes.length} blocks\n• ${edges.length} connections\n\n🔧 **Workflow components:**\n${plan.blocks.map(b => `• **${b.name}**: ${b.description}`).join('\n')}\n\n✅ **Ready to use!** You can now run the workflow or customize the blocks as needed.`,
         timestamp: new Date().toISOString(),
         workflowGenerated: true
       };
@@ -202,7 +247,7 @@ export function Copilot() {
       const errorMessage: ChatMessage = {
         id: `workflow-error-${Date.now()}`,
         role: 'assistant',
-        content: `I encountered an error while creating the workflow: ${error instanceof Error ? error.message : 'Unknown error'}. Let me try to help you in a different way.`,
+        content: `❌ **Workflow Creation Failed**\n\nError: ${error instanceof Error ? error.message : 'Unknown error'}\n\n💡 **Let me help differently:**\n• Try describing your workflow in simpler terms\n• I can suggest blocks manually\n• Or ask me specific questions about workflow building`,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -215,9 +260,9 @@ export function Copilot() {
 
   const generateQuickWorkflow = async (type: 'chatbot' | 'api-processor' | 'data-analyzer') => {
     const prompts = {
-      chatbot: 'Create a customer support chatbot workflow that can answer questions and escalate to human agents when needed',
-      'api-processor': 'Create a workflow that fetches data from an API, processes it, and sends the results via email',
-      'data-analyzer': 'Create a data analysis workflow that takes input data, analyzes it with AI, and generates a report'
+      chatbot: 'Create a comprehensive customer support chatbot workflow that receives user queries, processes them with AI, checks a knowledge base, provides responses, and escalates complex issues to human agents with proper logging and notifications',
+      'api-processor': 'Create a robust API data processing workflow that authenticates with external APIs, fetches data with error handling, validates and transforms the data, stores it in a database, and sends formatted reports via email with success/failure notifications',
+      'data-analyzer': 'Create an advanced data analysis workflow that ingests input data, validates and cleans it, performs AI-powered analysis, generates insights and visualizations, creates comprehensive reports, and distributes them to stakeholders with automated scheduling'
     };
     
     await handleSendMessage(prompts[type]);
@@ -241,7 +286,7 @@ export function Copilot() {
       </div>
 
       {/* Chat Messages */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4 [&>[data-radix-scroll-area-scrollbar]]:hidden">
         <div className="space-y-4">
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -263,12 +308,31 @@ export function Copilot() {
                     </div>
                   )}
                   <div className="flex-1">
-                    <p className="text-sm whitespace-pre-wrap">
-                      {message.content}
+                    <div className="text-sm whitespace-pre-wrap">
+                      {message.content.split('\n').map((line, index) => {
+                        // Simple markdown-like formatting
+                        if (line.startsWith('**') && line.endsWith('**')) {
+                          return <div key={index} className="font-bold text-foreground mb-1">{line.slice(2, -2)}</div>;
+                        }
+                        if (line.startsWith('• ')) {
+                          return <div key={index} className="ml-2 text-muted-foreground">{line}</div>;
+                        }
+                        if (line.includes('**')) {
+                          const parts = line.split('**');
+                          return (
+                            <div key={index}>
+                              {parts.map((part, i) => 
+                                i % 2 === 1 ? <strong key={i}>{part}</strong> : part
+                              )}
+                            </div>
+                          );
+                        }
+                        return <div key={index}>{line}</div>;
+                      })}
                       {message.isStreaming && (
                         <span className="inline-block w-2 h-4 bg-current animate-pulse ml-1" />
                       )}
-                    </p>
+                    </div>
                     <span className={`text-xs mt-2 block ${
                       message.role === 'user' 
                         ? 'text-primary-foreground/70' 
@@ -282,13 +346,19 @@ export function Copilot() {
             </div>
           ))}
           
-          {(isGenerating || isCreatingWorkflow) && (
+          {(isGenerating || isCreatingWorkflow || typingIndicator) && (
             <div className="flex justify-start">
-              <Card className="max-w-[85%] p-3">
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="text-sm text-muted-foreground">
-                    {isCreatingWorkflow ? 'Creating workflow...' : 'Thinking...'}
+              <Card className="max-w-[85%] p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-3">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  </div>
+                  <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    {isCreatingWorkflow ? '🔧 Building your workflow...' : 
+                     typingIndicator ? '💭 Processing...' : 
+                     '🤔 Thinking...'}
                   </span>
                 </div>
               </Card>
@@ -338,30 +408,41 @@ export function Copilot() {
       {/* Input */}
       <div className="p-4">
         <div className="flex gap-2">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              openaiService.isConfigured() 
-                ? "Describe the workflow you want to create..." 
-                : "Configure OpenAI API key to use AI features"
-            }
-            className="min-h-[60px] resize-none"
-            disabled={!openaiService.isConfigured()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
+          <div className="flex-1 relative">
+            <Textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                openaiService.isConfigured() 
+                  ? "Describe the workflow you want to create... (Press Enter to send, Shift+Enter for new line)" 
+                  : "Configure OpenAI API key to use AI features"
               }
-            }}
-          />
+              className="min-h-[60px] resize-none pr-12 transition-all duration-200 focus:ring-2 focus:ring-blue-500 scrollbar-none"
+              disabled={!openaiService.isConfigured() || isGenerating || isCreatingWorkflow}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+            />
+        {input.trim() && (
+              <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                {input.length}/1000
+              </div>
+            )}
+          </div>
           <Button 
             onClick={handleSend} 
             disabled={!input.trim() || isGenerating || isCreatingWorkflow || !openaiService.isConfigured()}
-            className="px-3"
+            className="px-4 py-2 h-auto min-h-[60px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
           >
-            <Send className="w-4 h-4" />
+            {isGenerating || isCreatingWorkflow ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
+                  <Send className="w-4 h-4" />
+            )}
           </Button>
         </div>
         

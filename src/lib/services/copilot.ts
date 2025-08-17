@@ -1,5 +1,5 @@
 import { openaiService } from './openai';
-import { getAllBlocks, getBlockConfig } from '../blocks/registry';
+import { getAllBlocks, getBlockConfig, blockRegistry } from '../blocks/registry';
 import { useAppStore } from '../store';
 import type { WorkflowNode, WorkflowEdge } from '../types';
 
@@ -49,7 +49,7 @@ export class CopilotService {
   private createSystemPrompt(): string {
     const blocks = this.getAvailableBlocks();
     
-    return `You are an AI workflow copilot for AGEN8, a visual workflow builder. Your job is to help users create workflows by autonomously selecting and arranging blocks.
+    return `You are an AI workflow copilot for AGEN8, a visual workflow builder. Your job is to help users create comprehensive, well-structured workflows by autonomously selecting and arranging blocks.
 
 Available blocks (use EXACT type strings in 'type'): 
 ${blocks.map(block => `
@@ -60,45 +60,79 @@ ${blocks.map(block => `
   Configuration: ${block.subBlocks.map(sb => `${sb.title} (${sb.type}${sb.required ? ', required' : ''})`).join(', ') || 'none'}
 `).join('')}
 
+WORKFLOW DESIGN PRINCIPLES:
+1. **Think End-to-End**: Always consider the complete user journey from input to final output
+2. **Add Processing Steps**: Include data transformation, validation, and processing blocks
+3. **Include Error Handling**: Add condition blocks for error scenarios when appropriate
+4. **Proper Flow**: Ensure logical sequence - Input → Process → Transform → Output
+5. **Rich Workflows**: Aim for 4-8 blocks minimum for comprehensive automation
+6. **Real-world Logic**: Consider authentication, data validation, formatting, notifications
+
+WORKFLOW PATTERNS TO FOLLOW:
+- **Data Processing**: Input → Validate → Transform → Process → Store → Notify
+- **API Integration**: Auth → Fetch → Process → Transform → Store/Send → Response
+- **Automation**: Trigger → Fetch Data → Process → Decision → Action → Notification
+- **Content Creation**: Input → Generate → Review → Format → Publish → Track
+
 When a user describes what they want to build, you should:
-1. Analyze their requirements
-2. Select appropriate blocks
-3. Suggest how to configure each block
-4. Plan the connections between blocks
-5. Provide a complete workflow plan
+1. **Analyze Requirements**: Break down the user's request into specific steps
+2. **Design Complete Flow**: Plan a comprehensive workflow with proper sequence
+3. **Select Appropriate Blocks**: Choose blocks that create a realistic automation
+4. **Configure Meaningfully**: Set up blocks with realistic configurations
+5. **Connect Logically**: Ensure proper data flow between blocks
 
 Always respond with a JSON object in this format:
 {
-  "description": "Brief description of the workflow",
+  "description": "Comprehensive description of the complete workflow",
   "blocks": [
     {
       "type": "exact_block_type_from_list_above",
-      "name": "Display name",
-      "description": "What this block does in the workflow",
+      "name": "Descriptive Display Name",
+      "description": "Detailed explanation of what this block does in the workflow",
       "data": {
-        "label": "Block Label",
-        "field1": "configured_value",
-        "field2": "another_value"
+        "label": "Meaningful Block Label",
+        "field1": "realistic_configured_value",
+        "field2": "another_realistic_value"
       }
     }
   ],
   "connections": [
     {
-      "from": "name_or_type_of_source_block",
-      "to": "name_or_type_of_target_block",
-      "description": "Why these blocks are connected"
+      "from": "starter",
+      "to": "first_block_name",
+      "description": "Workflow starts from the starter node"
+    },
+    {
+      "from": "first_block_name",
+      "to": "second_block_name",
+      "description": "Data flows from first to second block"
     }
   ],
-  "explanation": "Step-by-step explanation of how the workflow works"
+  "explanation": "Detailed step-by-step explanation of the complete workflow process"
 }
 
-Strict rules:
-- Do NOT create or suggest a new 'starter' block. Use the existing one implicitly.
-- Only use block types from the Available blocks list. If unsure, choose the closest valid type (e.g., 'agent' for chatbots, 'response' for outputs, 'condition' for branching).
-- Prefer names that match their purpose so mapping is reliable.
-- Provide minimal but valid configuration for required fields.
+CRITICAL RULES:
+- **NO Simple 2-Block Workflows**: Always create comprehensive workflows with multiple processing steps
+- **Starter Block**: Never create a 'starter' block - it exists implicitly, but ALWAYS connect from "starter" to your first block
+- **Block Types**: ONLY use these EXACT block types: ${Object.keys(blockRegistry).filter(k => k !== 'starter').join(', ')}
+- **Realistic Names**: Use descriptive names that clearly indicate the block's purpose
+- **Proper Connections**: ALWAYS start with "starter" → first_block, then connect every block in sequence
+- **Data Flow**: Think about what data flows between blocks and ensure compatibility
+- **Connection Chain**: Every workflow MUST start from "starter" and form a complete chain to the end
 
-Be practical. The result must be buildable from the provided block types.`;
+IMPORTANT: For a basic AI chatbot, use these blocks:
+- "agent" for AI processing (NOT "AI Chatbot" or "chatbot")
+- "response" for sending replies (NOT "Send Response")
+- "api" for external integrations if needed
+- "condition" for logic branching if needed
+
+EXAMPLES OF GOOD WORKFLOW THINKING:
+- AI Chatbot → agent (AI processing) → condition (check intent) → response (send reply)
+- YouTube Automation → api (YouTube API) → function (Data Processing) → agent (Content Analysis) → api (Google Drive) → response (Notification)
+- E-commerce → api (Product Fetch) → function (Price Analysis) → condition (Inventory Check) → api (Update Database) → response (Send Alert)
+- Social Media → agent (Content Generation) → function (Image Processing) → api (Scheduling) → api (Post Publishing) → response (Analytics Tracking)
+
+Build workflows that users would actually want to use in real scenarios!`;
   }
 
   async generateWorkflowPlan(userPrompt: string): Promise<WorkflowPlan> {
@@ -112,8 +146,9 @@ Be practical. The result must be buildable from the provided block types.`;
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
     ], {
-      temperature: 0.3, // Lower temperature for more consistent JSON output
-      maxTokens: 2000
+      temperature: 0.2, // Even lower temperature for more consistent JSON output
+      maxTokens: 1500, // Reduced for faster response
+      model: 'gpt-4o-mini' // Use faster model for workflow generation
     });
 
     const content = response.choices[0]?.message?.content;
@@ -129,6 +164,9 @@ Be practical. The result must be buildable from the provided block types.`;
       }
 
       const plan = JSON.parse(jsonMatch[0]) as WorkflowPlan;
+      
+      console.log('🤖 AI Generated Plan:', plan);
+      console.log('📦 Blocks in plan:', plan.blocks?.map(b => `${b.name} (${b.type})`));
       
       // Validate the plan structure
       if (!plan.blocks || !Array.isArray(plan.blocks)) {
@@ -160,10 +198,13 @@ Be practical. The result must be buildable from the provided block types.`;
     const xGap = 260; // spacing similar to n8n/sim.ai
     const yGap = 140;
 
+    let starterNodeId = 'starter'; // Default starter ID
+    
     if (currentWorkflow && currentWorkflow.nodes.length > 0) {
       const starterNode = currentWorkflow.nodes.find(n => n.type === 'starter' || n.type?.toLowerCase() === 'start');
       if (starterNode) {
         // Always reuse the single starter node; never create another
+        starterNodeId = starterNode.id;
         nodeIdMap.set('starter', starterNode.id);
         nodeIdMap.set('start', starterNode.id);
         baseX = starterNode.position.x + xGap;
@@ -189,9 +230,12 @@ Be practical. The result must be buildable from the provided block types.`;
 
       const blockConfig = getBlockConfig(blockSuggestion.type);
       if (!blockConfig) {
-        console.warn(`Unknown block type: ${blockSuggestion.type}`);
+        console.error(`❌ Unknown block type: "${blockSuggestion.type}". Available types:`, Object.keys(blockRegistry));
+        console.error('Block suggestion:', blockSuggestion);
         return;
       }
+      
+      console.log(`✅ Creating block: ${blockSuggestion.type} -> ${blockConfig.name}`);
 
       const nodeId = `${blockSuggestion.type}-${Date.now()}-${index}`;
 
@@ -248,33 +292,127 @@ Be practical. The result must be buildable from the provided block types.`;
       nodes.push(node);
     });
 
-    // Create edges from the plan
+    // Create edges from the plan with improved mapping
+    const createdConnections = new Set<string>();
+    
     plan.connections.forEach((connection, index) => {
       const fromKey = norm(connection.from);
       const toKey = norm(connection.to);
 
-      // Try several mapping strategies: by normalized name key, by raw id, and by known synonyms
-      const synonym = (k: string) => (k === 'start' ? 'starter' : k);
-
-      const fromId = nodeIdMap.get(fromKey)
-        || nodeIdMap.get(synonym(fromKey))
-        || nodeIdMap.get(connection.from)
-        || connection.from;
-      const toId = nodeIdMap.get(toKey)
-        || nodeIdMap.get(synonym(toKey))
-        || nodeIdMap.get(connection.to)
-        || connection.to;
-
-      if (fromId && toId) {
-        const edge: WorkflowEdge = {
-          id: `edge-${fromId}-${toId}-${index}`,
-          source: fromId,
-          target: toId
+      // Enhanced mapping strategies
+      const findNodeId = (key: string, originalKey: string) => {
+        // Handle starter node specially
+        if (key === 'starter' || key === 'start' || originalKey === 'starter' || originalKey === 'start') {
+          return starterNodeId;
+        }
+        
+        // Try exact matches first
+        if (nodeIdMap.has(key)) return nodeIdMap.get(key);
+        if (nodeIdMap.has(originalKey)) return nodeIdMap.get(originalKey);
+        
+        // Try synonyms
+        const synonyms = {
+          'input': 'input',
+          'output': 'response',
+          'result': 'response',
+          'end': 'response'
         };
-        edges.push(edge);
+        
+        if (synonyms[key] && nodeIdMap.has(synonyms[key])) {
+          return nodeIdMap.get(synonyms[key]);
+        }
+        
+        // Try partial matches (find node whose key contains the search term)
+        for (const [nodeKey, nodeId] of nodeIdMap.entries()) {
+          if (nodeKey.includes(key) || key.includes(nodeKey)) {
+            return nodeId;
+          }
+        }
+        
+        // Try by block type matching
+        const matchingNode = nodes.find(node => 
+          norm(node.type).includes(key) || key.includes(norm(node.type))
+        );
+        
+        return matchingNode?.id || null;
+      };
+
+      const fromId = findNodeId(fromKey, connection.from);
+      const toId = findNodeId(toKey, connection.to);
+
+      // Only create edge if both nodes exist and connection is valid
+      if (fromId && toId && fromId !== toId) {
+        const connectionKey = `${fromId}-${toId}`;
+        if (!createdConnections.has(connectionKey)) {
+          const edge: WorkflowEdge = {
+            id: `edge-${fromId}-${toId}-${index}`,
+            source: fromId,
+            target: toId
+          };
+          edges.push(edge);
+          createdConnections.add(connectionKey);
+        }
       }
     });
 
+    // ENSURE STARTER CONNECTION: If no connection from starter exists, connect to first node
+    const hasStarterConnection = edges.some(edge => edge.source === starterNodeId);
+    if (!hasStarterConnection && nodes.length > 0) {
+      const firstNode = nodes[0];
+      const starterEdge: WorkflowEdge = {
+        id: `edge-starter-${firstNode.id}`,
+        source: starterNodeId,
+        target: firstNode.id
+      };
+      edges.unshift(starterEdge); // Add at beginning
+    }
+
+    // ENSURE CHAIN CONNECTIONS: Connect unconnected nodes in sequence
+    const connectedNodes = new Set<string>();
+    connectedNodes.add(starterNodeId);
+    
+    edges.forEach(edge => {
+      connectedNodes.add(edge.source);
+      connectedNodes.add(edge.target);
+    });
+
+    // Find unconnected nodes and connect them in sequence
+    const unconnectedNodes = nodes.filter(node => !connectedNodes.has(node.id));
+    if (unconnectedNodes.length > 0) {
+      let lastConnectedNode = starterNodeId;
+      
+      // Find the last node in the current chain
+      const targetNodes = new Set(edges.map(e => e.target));
+      const sourceNodes = new Set(edges.map(e => e.source));
+      const endNodes = nodes.filter(n => !sourceNodes.has(n.id) && targetNodes.has(n.id));
+      
+      if (endNodes.length > 0) {
+        lastConnectedNode = endNodes[endNodes.length - 1].id;
+      }
+
+      // Connect unconnected nodes in sequence
+      unconnectedNodes.forEach((node, index) => {
+        const connectionKey = `${lastConnectedNode}-${node.id}`;
+        if (!createdConnections.has(connectionKey)) {
+          const edge: WorkflowEdge = {
+            id: `edge-auto-${lastConnectedNode}-${node.id}`,
+            source: lastConnectedNode,
+            target: node.id
+          };
+          edges.push(edge);
+          createdConnections.add(connectionKey);
+        }
+        lastConnectedNode = node.id;
+      });
+    }
+
+    console.log('🎯 Final Result:', { 
+      nodesCreated: nodes.length, 
+      edgesCreated: edges.length,
+      nodeTypes: nodes.map(n => n.type),
+      connections: edges.map(e => `${e.source} -> ${e.target}`)
+    });
+    
     return { nodes, edges };
   }
 
@@ -308,7 +446,8 @@ Be helpful, concise, and practical. When users ask to create workflows, offer to
 
       const response = await openaiService.chat(messages, {
         temperature: 0.7,
-        maxTokens: 1000
+        maxTokens: 800,
+        model: 'gpt-4o-mini' // Use faster model
       });
 
       return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
@@ -350,7 +489,8 @@ Be helpful, concise, and practical. When users ask to create workflows, offer to
 
       await openaiService.chatStream(messages, onChunk, {
         temperature: 0.7,
-        maxTokens: 1000
+        maxTokens: 800, // Faster response
+        model: 'gpt-4o-mini' // Use faster model
       });
     } catch (error) {
       console.error('Copilot stream chat error:', error);

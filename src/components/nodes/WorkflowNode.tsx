@@ -25,7 +25,7 @@ interface WorkflowNodeData {
   [key: string]: unknown;
 }
 
-export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
+const WorkflowNodeComponent = ({ id, data, selected, type, dragging }: NodeProps) => {
   const { 
     setSelectedNode, 
     currentExecution,
@@ -489,4 +489,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
       )}
     </div>
   );
-});
+};
+
+// Simple memo export
+export const WorkflowNode = memo(WorkflowNodeComponent);

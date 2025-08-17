@@ -29,9 +29,7 @@ export function Palette() {
   const categories = useMemo(() => {
     const cats = new Set(allBlocks.map(block => block.category || 'other'));
     const sortedCats = Array.from(cats).sort();
-    const result = ['all', ...sortedCats];
-    console.log('Available categories:', result);
-    return result;
+    return ['all', ...sortedCats];
   }, [allBlocks]);
   
   const filteredBlocks = useMemo(() => {
@@ -59,10 +57,8 @@ export function Palette() {
   };
 
   const handleAskCopilot = () => {
-    console.log('Ask AI button clicked');
     setCopilotSeed("Help me choose the right blocks for my workflow");
     openRightPanel('copilot');
-    console.log('Copilot panel should be opening');
   };
 
   return (
@@ -113,8 +109,7 @@ export function Palette() {
               variant="ghost" 
               size="sm" 
               onClick={handleAskCopilot}
-              className="h-7 text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100 pointer-events-auto cursor-pointer"
-              style={{ pointerEvents: 'auto' }}
+              className="h-7 text-blue-700 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-100"
             >
               Ask AI
             </Button>
@@ -129,16 +124,12 @@ export function Palette() {
       <div className="px-3 mb-3 shrink-0">
         <Card className="p-2 space-y-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
               placeholder="Search blocks..."
               value={searchTerm}
-              onChange={(e) => {
-                console.log('Search term changed:', e.target.value);
-                setSearchTerm(e.target.value);
-              }}
-              className="pl-10 pointer-events-auto"
-              style={{ pointerEvents: 'auto' }}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
             />
           </div>
           
@@ -149,23 +140,18 @@ export function Palette() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="h-8 pointer-events-auto cursor-pointer"
-                  style={{ pointerEvents: 'auto' }}
+                  className="h-8"
                 >
                   <Filter className="w-3 h-3 mr-1" />
                   {selectedCategory === 'all' ? 'All' : selectedCategory}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="pointer-events-auto" style={{ pointerEvents: 'auto' }}>
+              <DropdownMenuContent>
                 {categories.map((category) => (
                   <DropdownMenuItem
                     key={category}
-                    onClick={() => {
-                      console.log('Category selected:', category);
-                      setSelectedCategory(category);
-                    }}
-                    className={`${selectedCategory === category ? 'bg-accent' : ''} pointer-events-auto cursor-pointer`}
-                    style={{ pointerEvents: 'auto' }}
+                    onClick={() => setSelectedCategory(category)}
+                    className={selectedCategory === category ? 'bg-accent' : ''}
                   >
                     {category === 'all' ? 'All Categories' : category}
                   </DropdownMenuItem>
@@ -178,12 +164,10 @@ export function Palette() {
                 variant="ghost" 
                 size="sm" 
                 onClick={() => {
-                  console.log('Clear filters clicked');
                   setSearchTerm('');
                   setSelectedCategory('all');
                 }}
-                className="h-8 text-xs pointer-events-auto cursor-pointer"
-                style={{ pointerEvents: 'auto' }}
+                className="h-8 text-xs"
               >
                 Clear
               </Button>

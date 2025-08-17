@@ -260,3 +260,8 @@ All colors MUST be HSL.
 .scrollbar-none::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
+
+/* Simple performance optimizations */
+.react-flow__node {
+  transition: box-shadow 0.2s ease;
+}
