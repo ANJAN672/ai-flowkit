@@ -34,8 +34,8 @@ export function Copilot() {
       id: 'welcome',
       role: 'assistant',
       content: openaiService.isConfigured() 
-        ? '👋 Hi! I\'m your smart AI workflow copilot. I create practical workflows that match your needs.\n\n✨ **What I can do:**\n• Build simple workflows for quick tasks\n• Create complex workflows for advanced automation\n• Suggest the right blocks for your use case\n• Help configure and optimize workflows\n\nJust describe what you want to build - I\'ll match the complexity to your needs!' 
-        : 'Hi! I\'m your workflow copilot, but I need an OpenAI API key to function. Please configure your API key in the .env.local file.',
+        ? '🚀 Hi! I\'m your advanced AI workflow architect. I understand natural language and build perfect workflows for ANY use case.\n\n🧠 **My Superpowers:**\n• **Smart Intent Analysis** - I understand exactly what you want\n• **15+ Workflow Patterns** - From simple chatbots to complex RAG systems\n• **60+ Block Integrations** - WhatsApp, Slack, Pinecone, YouTube, Gmail, and more\n• **Adaptive Complexity** - Simple tasks get simple workflows, complex tasks get robust solutions\n\n💡 **Try me with:**\n• "WhatsApp chatbot with Gemini"\n• "RAG system with Pinecone and Slack notifications"\n• "YouTube video analyzer"\n• "Customer support automation"\n• "Data pipeline with error handling"\n\nI\'ll analyze your request and create the perfect workflow! 🎯' 
+        : 'Hi! I\'m your advanced workflow architect, but I need an OpenAI API key to function. Please configure your API key in the .env.local file.',
       timestamp: new Date().toISOString()
     }
   ]);
@@ -260,9 +260,9 @@ export function Copilot() {
 
   const generateQuickWorkflow = async (type: 'chatbot' | 'api-processor' | 'data-analyzer') => {
     const prompts = {
-      chatbot: 'Create a simple AI chatbot that processes user messages and responds with helpful answers',
-      'api-processor': 'Create a workflow that fetches data from an API and processes the results',
-      'data-analyzer': 'Create a data analysis workflow that takes input data and generates insights'
+      chatbot: 'Create an intelligent WhatsApp chatbot using Gemini that can handle customer inquiries and provide helpful responses',
+      'api-processor': 'Build a robust API data processing workflow that fetches external data, validates it, transforms the format, and stores results with error handling',
+      'data-analyzer': 'Design a comprehensive data analysis pipeline that ingests files, processes them with AI, generates insights, and sends detailed reports via Slack'
     };
     
     await handleSendMessage(prompts[type]);

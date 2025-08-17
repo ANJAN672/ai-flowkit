@@ -25,10 +25,152 @@ interface WorkflowPlan {
   }>;
 }
 
+interface WorkflowPattern {
+  name: string;
+  keywords: string[];
+  blocks: string[];
+  description: string;
+  complexity: 'simple' | 'moderate' | 'complex';
+}
+
+interface IntentAnalysis {
+  primaryIntent: string;
+  entities: string[];
+  patterns: WorkflowPattern[];
+  suggestedBlocks: string[];
+  confidence: number;
+}
+
 export class CopilotService {
+  private workflowPatterns: WorkflowPattern[] = [
+    // Communication Patterns
+    {
+      name: 'WhatsApp Chatbot',
+      keywords: ['whatsapp', 'chat', 'chatbot', 'conversation', 'message'],
+      blocks: ['whatsapp', 'agent', 'whatsapp'],
+      description: 'Bidirectional chat through WhatsApp',
+      complexity: 'simple'
+    },
+    {
+      name: 'Slack Bot',
+      keywords: ['slack', 'bot', 'notification', 'team', 'channel'],
+      blocks: ['slack', 'agent', 'slack'],
+      description: 'Interactive Slack bot',
+      complexity: 'simple'
+    },
+    {
+      name: 'Email Automation',
+      keywords: ['email', 'gmail', 'mail', 'send', 'automation'],
+      blocks: ['gmail', 'condition', 'response'],
+      description: 'Email processing and automation',
+      complexity: 'moderate'
+    },
+    
+    // AI & RAG Patterns
+    {
+      name: 'RAG System',
+      keywords: ['rag', 'retrieval', 'knowledge', 'vector', 'search'],
+      blocks: ['file', 'pinecone', 'agent', 'response'],
+      description: 'Retrieval-Augmented Generation system',
+      complexity: 'complex'
+    },
+    {
+      name: 'RAG with Notifications',
+      keywords: ['rag', 'notify', 'alert', 'slack', 'whatsapp'],
+      blocks: ['file', 'pinecone', 'agent', 'slack'],
+      description: 'RAG system with notifications',
+      complexity: 'complex'
+    },
+    {
+      name: 'Simple Chatbot',
+      keywords: ['chatbot', 'ai', 'assistant', 'basic', 'simple'],
+      blocks: ['agent', 'response'],
+      description: 'Basic AI chatbot',
+      complexity: 'simple'
+    },
+    
+    // Data Processing Patterns
+    {
+      name: 'File Analysis',
+      keywords: ['file', 'analyze', 'process', 'document', 'text'],
+      blocks: ['file', 'function', 'agent', 'response'],
+      description: 'File processing and analysis',
+      complexity: 'moderate'
+    },
+    {
+      name: 'API Integration',
+      keywords: ['api', 'fetch', 'data', 'integration', 'external'],
+      blocks: ['api', 'function', 'condition', 'response'],
+      description: 'API data processing',
+      complexity: 'moderate'
+    },
+    {
+      name: 'Content Generation',
+      keywords: ['generate', 'create', 'content', 'write', 'ai'],
+      blocks: ['agent', 'function', 'response'],
+      description: 'AI content generation',
+      complexity: 'moderate'
+    },
+    
+    // Social Media Patterns
+    {
+      name: 'YouTube Analysis',
+      keywords: ['youtube', 'video', 'analyze', 'search', 'content'],
+      blocks: ['youtube', 'agent', 'response'],
+      description: 'YouTube video analysis',
+      complexity: 'moderate'
+    },
+    {
+      name: 'Social Media Automation',
+      keywords: ['social', 'twitter', 'x', 'linkedin', 'post'],
+      blocks: ['agent', 'x', 'response'],
+      description: 'Social media posting automation',
+      complexity: 'moderate'
+    },
+    
+    // Database Patterns
+    {
+      name: 'Database Operations',
+      keywords: ['database', 'store', 'save', 'query', 'airtable'],
+      blocks: ['airtable', 'function', 'condition', 'response'],
+      description: 'Database operations workflow',
+      complexity: 'moderate'
+    },
+    {
+      name: 'Spreadsheet Automation',
+      keywords: ['sheet', 'excel', 'spreadsheet', 'data', 'google'],
+      blocks: ['googlesheets', 'function', 'response'],
+      description: 'Spreadsheet automation',
+      complexity: 'moderate'
+    },
+    
+    // Complex Multi-step Patterns
+    {
+      name: 'Research Assistant',
+      keywords: ['research', 'find', 'search', 'information', 'knowledge'],
+      blocks: ['api', 'agent', 'pinecone', 'response'],
+      description: 'AI research assistant',
+      complexity: 'complex'
+    },
+    {
+      name: 'Customer Support',
+      keywords: ['support', 'help', 'customer', 'ticket', 'assist'],
+      blocks: ['agent', 'condition', 'slack', 'gmail'],
+      description: 'Customer support workflow',
+      complexity: 'complex'
+    },
+    {
+      name: 'Data Pipeline',
+      keywords: ['pipeline', 'etl', 'transform', 'process', 'workflow'],
+      blocks: ['file', 'function', 'condition', 'api', 'response'],
+      description: 'Data processing pipeline',
+      complexity: 'complex'
+    }
+  ];
+
   private getAvailableBlocks() {
     return getAllBlocks()
-      .filter(block => block.type !== 'starter') // Exclude starter block
+      .filter(block => block.type !== 'starter')
       .map(block => ({
         type: block.type,
         name: block.name,
@@ -114,7 +256,7 @@ export class CopilotService {
       slack: ['slack', 'team', 'notification', 'message', 'channel', 'workspace'],
       discord: ['discord', 'server', 'bot', 'community', 'gaming', 'chat'],
       gmail: ['email', 'mail', 'send', 'gmail', 'google', 'notification'],
-      pinecone: ['vector', 'embedding', 'search', 'rag', 'similarity', 'semantic', 'knowledge'],
+      pinecone: ['vector', 'embedding', 'search', 'rag', 'similarity', 'semantic', 'knowledge', 'vectordb', 'database'],
       notion: ['notes', 'database', 'workspace', 'documentation', 'wiki'],
       airtable: ['database', 'table', 'record', 'spreadsheet', 'crm'],
       github: ['code', 'repository', 'git', 'issue', 'pull request', 'ci/cd'],
@@ -126,6 +268,7 @@ export class CopilotService {
       youtube: ['youtube', 'video', 'search', 'content'],
       linkedin: ['linkedin', 'professional', 'network', 'business'],
       x: ['twitter', 'x', 'tweet', 'social', 'post'],
+      whatsapp: ['whatsapp', 'whats app', 'wa', 'message', 'chat'],
     };
     
     return [...(keywords[type] || []), type, name.toLowerCase()];
@@ -156,82 +299,392 @@ export class CopilotService {
     return indicatorCount >= 4 ? 'complex' : 'moderate';
   }
 
-  private analyzeUserIntent(userPrompt: string): string[] {
+  private analyzeUserIntent(userPrompt: string): IntentAnalysis {
     const lc = userPrompt.toLowerCase();
-    const allBlocks = this.getAllAvailableBlocks();
-    const relevantBlocks: string[] = [];
+    const words = lc.split(' ');
     
-    // Find blocks that match user keywords
-    for (const block of allBlocks) {
-      const score = block.keywords.filter(keyword => lc.includes(keyword)).length;
-      if (score > 0) {
-        relevantBlocks.push(`${block.type}:${score}`);
+    // Analyze against workflow patterns
+    const patternMatches = this.workflowPatterns.map(pattern => {
+      const matchingKeywords = pattern.keywords.filter(keyword => 
+        lc.includes(keyword.toLowerCase())
+      );
+      const score = matchingKeywords.length;
+      const confidence = score / pattern.keywords.length;
+      
+      return {
+        pattern,
+        score,
+        confidence,
+        matchingKeywords
+      };
+    }).filter(match => match.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    // Extract entities (services, tools, platforms mentioned)
+    const entities = this.extractEntities(lc);
+    
+    // Determine primary intent
+    let primaryIntent = 'general_automation';
+    if (patternMatches.length > 0) {
+      primaryIntent = patternMatches[0].pattern.name.toLowerCase().replace(' ', '_');
+    }
+    
+    // Get matching patterns (top 3)
+    const patterns = patternMatches.slice(0, 3).map(match => match.pattern);
+    
+    // Smart block suggestion based on patterns and entities
+    let suggestedBlocks: string[] = [];
+    if (patterns.length > 0) {
+      suggestedBlocks = patterns[0].blocks;
+      
+      // Enhance based on entities
+      entities.forEach(entity => {
+        if (!suggestedBlocks.includes(entity)) {
+          suggestedBlocks.push(entity);
+        }
+      });
+    } else {
+      // Fallback: use entity-based analysis
+      suggestedBlocks = this.fallbackBlockAnalysis(lc, entities);
+    }
+    
+    return {
+      primaryIntent,
+      entities,
+      patterns,
+      suggestedBlocks: suggestedBlocks.slice(0, 6),
+      confidence: patternMatches[0]?.confidence || 0.5
+    };
+  }
+
+  private extractEntities(prompt: string): string[] {
+    const entityMap: Record<string, string> = {
+      // Communication platforms
+      'whatsapp': 'whatsapp',
+      'whats app': 'whatsapp',
+      'wa': 'whatsapp',
+      'slack': 'slack',
+      'discord': 'discord',
+      'telegram': 'telegram',
+      
+      // Email services  
+      'gmail': 'gmail',
+      'email': 'gmail',
+      'mail': 'gmail',
+      'outlook': 'outlook',
+      
+      // AI services
+      'openai': 'openai',
+      'gpt': 'openai',
+      'gemini': 'openai',
+      'claude': 'openai',
+      
+      // Vector databases
+      'pinecone': 'pinecone',
+      'vector': 'pinecone',
+      'qdrant': 'qdrant',
+      'vectordb': 'pinecone',
+      
+      // Social media
+      'youtube': 'youtube',
+      'twitter': 'x',
+      'x.com': 'x',
+      'linkedin': 'linkedin',
+      
+      // Productivity
+      'notion': 'notion',
+      'airtable': 'airtable',
+      'sheets': 'googlesheets',
+      'excel': 'googlesheets',
+      'drive': 'googledrive',
+      
+      // Development
+      'github': 'github',
+      'git': 'github',
+      'api': 'api',
+      'webhook': 'api',
+      
+      // File operations
+      'file': 'file',
+      'document': 'file',
+      'pdf': 'file',
+      'text': 'file'
+    };
+
+    const entities: string[] = [];
+    
+    Object.keys(entityMap).forEach(keyword => {
+      if (prompt.includes(keyword)) {
+        const blockType = entityMap[keyword];
+        if (!entities.includes(blockType)) {
+          entities.push(blockType);
+        }
+      }
+    });
+
+    return entities;
+  }
+
+  private fallbackBlockAnalysis(prompt: string, entities: string[]): string[] {
+    const blocks: string[] = [...entities];
+    
+    // Add core workflow blocks based on intent
+    if (prompt.includes('chat') || prompt.includes('bot') || prompt.includes('conversation')) {
+      if (!blocks.includes('agent')) blocks.push('agent');
+    }
+    
+    if (prompt.includes('analyze') || prompt.includes('process') || prompt.includes('transform')) {
+      if (!blocks.includes('function')) blocks.push('function');
+      if (!blocks.includes('agent')) blocks.push('agent');
+    }
+    
+    if (prompt.includes('condition') || prompt.includes('if') || prompt.includes('check')) {
+      if (!blocks.includes('condition')) blocks.push('condition');
+    }
+    
+    if (prompt.includes('notify') || prompt.includes('send') || prompt.includes('alert')) {
+      if (entities.some(e => ['whatsapp', 'slack', 'discord', 'gmail'].includes(e))) {
+        // Already have notification blocks from entities
+      } else {
+        blocks.push('slack'); // Default notification
       }
     }
     
-    // Sort by relevance score and return top matches
-    return relevantBlocks
-      .sort((a, b) => parseInt(b.split(':')[1]) - parseInt(a.split(':')[1]))
-      .slice(0, 8)
-      .map(item => item.split(':')[0]);
+    // Always add response for output
+    if (!blocks.some(b => ['response', 'whatsapp', 'slack', 'gmail', 'discord'].includes(b))) {
+      blocks.push('response');
+    }
+    
+    return blocks;
   }
 
-  private createSystemPrompt(): string {
-    const availableBlocks = this.getAllAvailableBlocks();
-    const coreBlocks = availableBlocks.filter(b => 
-      ['agent', 'api', 'condition', 'response', 'function'].includes(b.type)
-    );
-    const integrationBlocks = availableBlocks.filter(b => b.category === 'integrations').slice(0, 20);
+  private validateAndCorrectBlockTypes(plan: WorkflowPlan, userPrompt: string): WorkflowPlan {
+    const availableBlockTypes = getAllBlocks().map(b => b.type);
+    const correctionMap: Record<string, string> = {
+      // Common AI mistakes → Correct block types
+      'ai_chatbot': 'agent',
+      'ai chatbot': 'agent', 
+      'chatbot': 'agent',
+      'ai_agent': 'agent',
+      'ai agent': 'agent',
+      'llm': 'agent',
+      'gpt': 'agent',
+      'gemini': 'agent',
+      'claude': 'agent',
+      'user interaction agent': 'agent',
+      'user_interaction_agent': 'agent',
+      'interaction agent': 'agent',
+      'chatbot agent': 'agent',
+      
+      'vector_database': 'pinecone',
+      'vector database': 'pinecone',
+      'vector_search': 'pinecone',
+      'vector search': 'pinecone',
+      'vectordb': 'pinecone',
+      'vector_db': 'pinecone',
+      'vector db': 'pinecone',
+      'database_query': 'pinecone',
+      'database query': 'pinecone',
+      'vector_database_query': 'pinecone',
+      'vector database query': 'pinecone',
+      
+      // WhatsApp corrections
+      'whatsapp_notification': 'whatsapp',
+      'whatsapp notification': 'whatsapp',
+      'whatsapp_message': 'whatsapp',
+      'whatsapp message': 'whatsapp',
+      'send_whatsapp': 'whatsapp',
+      'send whatsapp': 'whatsapp',
+      'whatsapp integration': 'whatsapp',
+      'whatsapp_integration': 'whatsapp',
+      
+      'slack_notification': 'slack',
+      'slack notification': 'slack',
+      'slack notification block': 'slack',
+      'slack_notification_block': 'slack',
+      'send_notification': 'slack',
+      'send notification': 'slack',
+      'notification': 'whatsapp', // Default notification to whatsapp if mentioned
+      'notify': 'whatsapp',
+      'alert': 'slack',
+      'send_message': 'slack',
+      'send message': 'slack',
+      'message': 'slack',
+      
+      'email_notification': 'gmail',
+      'email notification': 'gmail',
+      'send_email': 'gmail',
+      'send email': 'gmail',
+      'email': 'gmail',
+      'mail': 'gmail',
+      
+      'file_reader': 'file',
+      'file reader': 'file',
+      'read_file': 'file',
+      'read file': 'file',
+      'file_input': 'file',
+      'file input': 'file',
+      'data_input': 'file',
+      'data input': 'file',
+      
+      'http_request': 'api',
+      'http request': 'api',
+      'rest_api': 'api',
+      'rest api': 'api',
+      'web_request': 'api',
+      'web request': 'api',
+      'fetch_data': 'api',
+      'fetch data': 'api',
+      
+      'condition_check': 'condition',
+      'condition check': 'condition',
+      'if_condition': 'condition',
+      'if condition': 'condition',
+      'branch': 'condition',
+      'decision': 'condition',
+      'logic': 'condition',
+      
+      'output': 'response',
+      'result': 'response',
+      'send_response': 'response',
+      'send response': 'response',
+      'user response': 'response',
+      'user_response': 'response',
+      'reply': 'response',
+      'return': 'response',
+      'final_output': 'response',
+      'final output': 'response',
+      
+      'data_processing': 'function',
+      'data processing': 'function',
+      'transform': 'function',
+      'process': 'function',
+      'parse': 'function',
+      'format': 'function'
+    };
+
+    console.log('🔍 Validating block types...');
     
-    return `You are an AI workflow copilot for AGEN8. Create practical workflows using the EXACT block types available.
+    const correctedBlocks = plan.blocks.map((block, index) => {
+      const originalType = block.type.toLowerCase().trim();
+      
+      // Check if the block type exists in registry
+      if (availableBlockTypes.includes(originalType)) {
+        console.log(`✅ Block ${index + 1}: "${originalType}" - Valid`);
+        return { ...block, type: originalType };
+      }
+      
+      // Try to find a correction
+      let correctedType = correctionMap[originalType];
+      
+      // If no direct correction, try fuzzy matching with keywords
+      if (!correctedType) {
+        const lc = userPrompt.toLowerCase();
+        
+        // Smart keyword matching based on user input
+        if (originalType.includes('vector') || originalType.includes('database') || originalType.includes('pinecone')) {
+          if (lc.includes('pinecone')) correctedType = 'pinecone';
+          else if (lc.includes('qdrant')) correctedType = 'qdrant'; 
+          else correctedType = 'pinecone'; // default vector db
+        }
+        else if (originalType.includes('whatsapp') || (originalType.includes('notification') && lc.includes('whatsapp'))) {
+          correctedType = 'whatsapp';
+        }
+        else if (originalType.includes('slack') || originalType.includes('notification')) {
+          if (lc.includes('whatsapp')) correctedType = 'whatsapp';
+          else if (lc.includes('slack')) correctedType = 'slack';
+          else if (lc.includes('discord')) correctedType = 'discord';
+          else if (lc.includes('telegram')) correctedType = 'telegram';
+          else correctedType = 'slack'; // default notification
+        }
+        else if (originalType.includes('email') || originalType.includes('mail')) {
+          if (lc.includes('gmail')) correctedType = 'gmail';
+          else if (lc.includes('outlook')) correctedType = 'outlook';
+          else correctedType = 'gmail'; // default email
+        }
+        else if (originalType.includes('ai') || originalType.includes('chat') || originalType.includes('agent')) {
+          correctedType = 'agent';
+        }
+        else if (originalType.includes('file') || originalType.includes('read') || originalType.includes('input')) {
+          correctedType = 'file';
+        }
+        else if (originalType.includes('condition') || originalType.includes('if') || originalType.includes('check')) {
+          correctedType = 'condition';
+        }
+        else if (originalType.includes('response') || originalType.includes('output') || originalType.includes('result')) {
+          correctedType = 'response';
+        }
+        else if (originalType.includes('api') || originalType.includes('http') || originalType.includes('request')) {
+          correctedType = 'api';
+        }
+        else if (originalType.includes('function') || originalType.includes('process') || originalType.includes('transform')) {
+          correctedType = 'function';
+        }
+        else {
+          // Last resort: default to agent for AI-related tasks
+          correctedType = 'agent';
+        }
+      }
+      
+      console.log(`🔧 Block ${index + 1}: "${originalType}" → "${correctedType}" (${availableBlockTypes.includes(correctedType) ? 'Valid' : 'STILL INVALID!'})`);
+      
+      return {
+        ...block,
+        type: correctedType,
+        name: block.name || `${correctedType} Block`
+      };
+    });
+    
+    return {
+      ...plan,
+      blocks: correctedBlocks
+    };
+  }
 
-CORE WORKFLOW BLOCKS:
-${coreBlocks.map(block => `
-• ${block.name} (${block.type}): ${block.description}
-  Keywords: ${block.keywords.slice(0, 4).join(', ')}
-  Use for: ${block.useCases.join(', ')}
-`).join('')}
+  private createSystemPrompt(analysis: IntentAnalysis): string {
+    const availableTypes = getAllBlocks().filter(b => b.type !== 'starter').map(b => b.type);
+    
+    return `You are an expert workflow architect. Create a workflow using ONLY these exact block types: ${availableTypes.join(', ')}
 
-POPULAR INTEGRATION BLOCKS:
-${integrationBlocks.map(block => `
-• ${block.name} (${block.type}): ${block.description}
-  Keywords: ${block.keywords.slice(0, 3).join(', ')}
-`).join('')}
+ANALYZED USER INTENT:
+- Primary Intent: ${analysis.primaryIntent}
+- Confidence: ${(analysis.confidence * 100).toFixed(0)}%
+- Detected Entities: ${analysis.entities.join(', ') || 'none'}
+- Suggested Blocks: ${analysis.suggestedBlocks.join(', ')}
+- Matching Patterns: ${analysis.patterns.map(p => p.name).join(', ') || 'custom workflow'}
 
-WORKFLOW BUILDING RULES:
-1. **Use EXACT block types**: Only use block types from the lists above
-2. **Match user intent**: If user mentions "slack", use block type "slack", not "api"
-3. **Logical flow**: Connect blocks in meaningful sequence
-4. **Appropriate complexity**: Simple requests = 2-3 blocks, complex requests = 4-6 blocks
+WORKFLOW PATTERNS DATABASE:
+${this.workflowPatterns.map(pattern => 
+  `• ${pattern.name}: ${pattern.blocks.join(' → ')} (${pattern.complexity})`
+).join('\n')}
 
-BLOCK SELECTION EXAMPLES:
-• "chatbot with gemini" → agent (for AI) + response (for output)
-• "rag with pinecone and slack" → file (read data) + pinecone (vector search) + agent (AI processing) + slack (notifications)
-• "youtube analysis" → youtube (search videos) + agent (analyze) + response (results)
-• "email automation" → gmail (send emails) + condition (logic) + response (confirmation)
+SMART WORKFLOW RULES:
+1. Use the suggested blocks from analysis: ${analysis.suggestedBlocks.join(', ')}
+2. Follow logical flow: input → processing → output
+3. For bidirectional communication (WhatsApp, Slack): use block twice (input & output)
+4. For RAG workflows: file → pinecone → agent → (notification/response)
+5. For API workflows: api → function → condition → response
+6. Always connect from "starter" to first block
+
+PERFECT EXAMPLES:
+WhatsApp Chatbot: [{"type":"whatsapp","name":"Receive Message"}, {"type":"agent","name":"AI Agent"}, {"type":"whatsapp","name":"Send Reply"}]
+RAG + Slack: [{"type":"file","name":"Load Data"}, {"type":"pinecone","name":"Vector Search"}, {"type":"agent","name":"AI Process"}, {"type":"slack","name":"Send to Slack"}]
+YouTube Analysis: [{"type":"youtube","name":"Search Videos"}, {"type":"agent","name":"Analyze Content"}, {"type":"response","name":"Return Results"}]
 
 JSON RESPONSE FORMAT:
 {
-  "description": "Clear workflow description",
+  "description": "Clear workflow description based on user intent",
   "blocks": [
-    {
-      "type": "exact_block_type_from_above_lists",
-      "name": "Descriptive Block Name",
-      "description": "What this block does in this workflow",
-      "data": { "label": "Block Display Name" }
-    }
+    {"type": "exact_block_type", "name": "Descriptive Name", "description": "What this block does", "data": {"label": "Display Name"}}
   ],
   "connections": [
-    { "from": "starter", "to": "first_block_name", "description": "Workflow starts here" },
-    { "from": "first_block_name", "to": "next_block_name", "description": "Data flows here" }
+    {"from": "starter", "to": "first_block_name", "description": "Workflow starts"},
+    {"from": "first_block_name", "to": "second_block_name", "description": "Data flows"}
   ]
 }
 
-CRITICAL: 
-- NEVER create block types not in the lists above
-- ALWAYS start connections from "starter"
-- Use specific integration blocks (slack, pinecone, gmail) instead of generic "api"
-- Match block types to user keywords exactly`;
+CRITICAL: Use ONLY block types from this list: ${availableTypes.join(', ')}
+Never create fake types like "User Interaction Agent" or "WhatsApp Integration"!`;
   }
 
   async generateWorkflowPlan(userPrompt: string): Promise<WorkflowPlan> {
@@ -239,55 +692,48 @@ CRITICAL:
       throw new Error('OpenAI API is not configured. Please set up your API key.');
     }
 
-    // Analyze user intent and suggest relevant blocks
-    const relevantBlocks = this.analyzeUserIntent(userPrompt);
+    // Comprehensive intent analysis using the new system
+    const analysis = this.analyzeUserIntent(userPrompt);
     const complexity = this.analyzeWorkflowComplexity(userPrompt);
     
-    console.log(`🔍 User intent analysis - Relevant blocks:`, relevantBlocks);
+    console.log(`🧠 Intent Analysis:`, {
+      primaryIntent: analysis.primaryIntent,
+      entities: analysis.entities,
+      patterns: analysis.patterns.map(p => p.name),
+      suggestedBlocks: analysis.suggestedBlocks,
+      confidence: analysis.confidence
+    });
     console.log(`🔍 Workflow complexity: ${complexity}`);
 
-    const systemPrompt = this.createSystemPrompt();
+    const systemPrompt = this.createSystemPrompt(analysis);
     
-    // Add intelligent guidance to the user prompt
-    let enhancedPrompt = `${userPrompt}
+    // Build intelligent prompt based on analysis
+    const bestPattern = analysis.patterns[0];
+    let smartPrompt = `${userPrompt}
 
-INTELLIGENT ANALYSIS:
-- Detected relevant blocks: ${relevantBlocks.slice(0, 5).join(', ')}
-- Complexity level: ${complexity.toUpperCase()}
+INTELLIGENT ANALYSIS RESULTS:
+✅ Detected Intent: ${analysis.primaryIntent} (${(analysis.confidence * 100).toFixed(0)}% confidence)
+✅ Identified Services: ${analysis.entities.join(', ') || 'none specific'}
+✅ Best Matching Pattern: ${bestPattern?.name || 'Custom workflow'}
+✅ Recommended Blocks: ${analysis.suggestedBlocks.join(' → ')}
+✅ Complexity Level: ${complexity}
 
-SPECIFIC GUIDANCE:`;
-    
-    switch (complexity) {
-      case 'simple':
-        enhancedPrompt += `
-- Create a SIMPLE workflow (2-3 blocks)  
-- Focus on core functionality only
-- Example: ${relevantBlocks[0]} → response`;
-        break;
-      case 'moderate':
-        enhancedPrompt += `
-- Create a MODERATE workflow (3-5 blocks)
-- Include essential processing steps
-- Consider: ${relevantBlocks.slice(0, 3).join(' → ')}`;
-        break;
-      case 'complex':
-        enhancedPrompt += `
-- Design a COMPREHENSIVE workflow (4-6 blocks)
-- Include error handling and validation  
-- Suggested flow: ${relevantBlocks.slice(0, 4).join(' → ')}`;
-        break;
+PRECISE INSTRUCTIONS:
+Create a ${complexity} workflow using these EXACT block types: ${analysis.suggestedBlocks.join(', ')}`;
+
+    if (bestPattern) {
+      smartPrompt += `\nFollow this proven pattern: ${bestPattern.blocks.join(' → ')}`;
+      smartPrompt += `\nPattern description: ${bestPattern.description}`;
     }
-    
-    enhancedPrompt += `
 
-REMEMBER: Use EXACT block types from the available lists. If user mentions specific services (slack, pinecone, gmail), use those exact block types!`;
+    smartPrompt += `\n\nGenerate the JSON workflow now using ONLY the suggested blocks!`;
     
     const response = await openaiService.chat([
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: enhancedPrompt }
+      { role: 'user', content: smartPrompt }
     ], {
-      temperature: 0.1, // Very low temperature for consistent, practical results
-      maxTokens: 1000, // Reduced for more focused responses
+      temperature: 0.0, // Zero temperature for maximum consistency
+      maxTokens: 1000, // Enough for complex workflows
       model: 'gpt-4o-mini'
     });
 
@@ -303,15 +749,21 @@ REMEMBER: Use EXACT block types from the available lists. If user mentions speci
         throw new Error('No JSON found in response');
       }
 
-      const plan = JSON.parse(jsonMatch[0]) as WorkflowPlan;
+      let plan = JSON.parse(jsonMatch[0]) as WorkflowPlan;
       
-      console.log('🤖 AI Generated Plan:', plan);
-      console.log('📦 Blocks in plan:', plan.blocks?.map(b => `${b.name} (${b.type})`));
+      console.log('🤖 AI Generated Plan (raw):', plan);
+      console.log('📦 Blocks in plan (raw):', plan.blocks?.map(b => `${b.name} (${b.type})`));
       
       // Validate the plan structure
       if (!plan.blocks || !Array.isArray(plan.blocks)) {
         throw new Error('Invalid workflow plan: missing blocks array');
       }
+
+      // FIX INVALID BLOCK TYPES - This is critical!
+      plan = this.validateAndCorrectBlockTypes(plan, userPrompt);
+      
+      console.log('✅ Corrected Plan:', plan);
+      console.log('✅ Final blocks:', plan.blocks?.map(b => `${b.name} (${b.type})`));
 
       return plan;
     } catch (error) {
