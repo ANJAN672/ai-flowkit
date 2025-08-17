@@ -46,93 +46,192 @@ export class CopilotService {
       }));
   }
 
-  private createSystemPrompt(): string {
-    const blocks = this.getAvailableBlocks();
-    
-    return `You are an AI workflow copilot for AGEN8, a visual workflow builder. Your job is to help users create comprehensive, well-structured workflows by autonomously selecting and arranging blocks.
+  private getAllAvailableBlocks() {
+    // Get ALL blocks from registry for comprehensive workflow building
+    return getAllBlocks()
+      .filter(block => block.type !== 'starter')
+      .map(block => ({
+        type: block.type,
+        name: block.name,
+        description: block.description || '',
+        category: block.category,
+        inputs: block.inputs || {},
+        outputs: block.outputs || {},
+        useCases: this.getBlockUseCases(block.type),
+        keywords: this.getBlockKeywords(block.type, block.name)
+      }))
+      .sort((a, b) => {
+        // Sort by relevance: core blocks first, then popular integrations
+        const coreBlocks = ['agent', 'api', 'condition', 'response', 'function'];
+        const popularBlocks = ['slack', 'gmail', 'pinecone', 'discord', 'notion', 'airtable', 'github'];
+        
+        if (coreBlocks.includes(a.type) && !coreBlocks.includes(b.type)) return -1;
+        if (!coreBlocks.includes(a.type) && coreBlocks.includes(b.type)) return 1;
+        if (popularBlocks.includes(a.type) && !popularBlocks.includes(b.type)) return -1;
+        if (!popularBlocks.includes(a.type) && popularBlocks.includes(b.type)) return 1;
+        
+        return a.name.localeCompare(b.name);
+      });
+  }
 
-Available blocks (use EXACT type strings in 'type'): 
-${blocks.map(block => `
-- ${block.name} (type: ${block.type}): ${block.description}
-  Category: ${block.category}
-  Inputs: ${Object.keys(block.inputs).join(', ') || 'none'}
-  Outputs: ${Object.keys(block.outputs).join(', ') || 'none'}
-  Configuration: ${block.subBlocks.map(sb => `${sb.title} (${sb.type}${sb.required ? ', required' : ''})`).join(', ') || 'none'}
+  private getBlockUseCases(type: string): string[] {
+    const useCases: Record<string, string[]> = {
+      // Core blocks
+      agent: ['AI chat/conversation', 'Content generation', 'Text analysis', 'Decision making', 'Data processing'],
+      api: ['Fetch external data', 'Send data to services', 'Webhook calls', 'Authentication', 'Integration'],
+      condition: ['Route workflow based on data', 'Error handling', 'Validate responses', 'Branch logic'],
+      response: ['Send final output', 'User notifications', 'Return results', 'Workflow completion'],
+      function: ['Transform data format', 'Calculate values', 'Parse/extract data', 'Clean/validate input'],
+      
+      // Popular integrations
+      slack: ['Team notifications', 'Workflow alerts', 'Chat messages', 'Channel updates'],
+      discord: ['Community notifications', 'Bot messages', 'Server alerts', 'Channel posts'],
+      gmail: ['Email sending', 'Email automation', 'Notifications via email', 'Email workflows'],
+      pinecone: ['Vector search', 'RAG systems', 'Semantic search', 'AI memory', 'Embeddings storage'],
+      notion: ['Knowledge base', 'Note taking', 'Database operations', 'Documentation'],
+      airtable: ['Database operations', 'Spreadsheet automation', 'Data storage', 'CRM workflows'],
+      github: ['Code management', 'Issue tracking', 'Repository operations', 'CI/CD integration'],
+      file: ['File operations', 'Data reading', 'Content processing', 'File management'],
+      openai: ['AI processing', 'GPT integration', 'Content generation', 'Text analysis'],
+      googledrive: ['File storage', 'Document sharing', 'Cloud operations', 'File sync'],
+      googlesheets: ['Spreadsheet automation', 'Data analysis', 'Report generation', 'Data tracking'],
+      telegram: ['Bot messages', 'Notifications', 'Chat automation', 'Instant messaging'],
+      youtube: ['Video search', 'Content discovery', 'Video management', 'YouTube automation'],
+      linkedin: ['Professional networking', 'Content sharing', 'Social automation', 'Lead generation'],
+      x: ['Social media posting', 'Twitter automation', 'Content sharing', 'Social engagement']
+    };
+    return useCases[type] || [`${type} integration`, 'External service connection'];
+  }
+
+  private getBlockKeywords(type: string, name: string): string[] {
+    const keywords: Record<string, string[]> = {
+      agent: ['ai', 'chat', 'chatbot', 'conversation', 'generate', 'gpt', 'llm', 'gemini', 'claude'],
+      api: ['fetch', 'request', 'http', 'rest', 'webhook', 'endpoint', 'service'],
+      condition: ['if', 'check', 'validate', 'branch', 'route', 'logic', 'decision'],
+      response: ['output', 'result', 'reply', 'send', 'return', 'respond'],
+      function: ['transform', 'process', 'calculate', 'parse', 'format', 'convert'],
+      
+      slack: ['slack', 'team', 'notification', 'message', 'channel', 'workspace'],
+      discord: ['discord', 'server', 'bot', 'community', 'gaming', 'chat'],
+      gmail: ['email', 'mail', 'send', 'gmail', 'google', 'notification'],
+      pinecone: ['vector', 'embedding', 'search', 'rag', 'similarity', 'semantic', 'knowledge'],
+      notion: ['notes', 'database', 'workspace', 'documentation', 'wiki'],
+      airtable: ['database', 'table', 'record', 'spreadsheet', 'crm'],
+      github: ['code', 'repository', 'git', 'issue', 'pull request', 'ci/cd'],
+      file: ['file', 'read', 'write', 'document', 'text', 'data'],
+      openai: ['openai', 'gpt', 'ai', 'generate', 'completion'],
+      googledrive: ['drive', 'file', 'storage', 'document', 'share'],
+      googlesheets: ['sheet', 'spreadsheet', 'data', 'excel', 'table'],
+      telegram: ['telegram', 'bot', 'message', 'notification'],
+      youtube: ['youtube', 'video', 'search', 'content'],
+      linkedin: ['linkedin', 'professional', 'network', 'business'],
+      x: ['twitter', 'x', 'tweet', 'social', 'post'],
+    };
+    
+    return [...(keywords[type] || []), type, name.toLowerCase()];
+  }
+
+  private analyzeWorkflowComplexity(userPrompt: string): 'simple' | 'moderate' | 'complex' {
+    const lc = userPrompt.toLowerCase();
+    
+    // Simple workflows (2-3 blocks)
+    if (lc.includes('chatbot') || lc.includes('simple') || lc.includes('basic') || 
+        lc.includes('quick') || lc.includes('just') || lc.includes('only')) {
+      return 'simple';
+    }
+    
+    // Complex workflows (5-7 blocks)  
+    if (lc.includes('comprehensive') || lc.includes('complete') || lc.includes('advanced') ||
+        lc.includes('robust') || lc.includes('enterprise') || lc.includes('full-featured')) {
+      return 'complex';
+    }
+    
+    // Count complexity indicators
+    const complexityIndicators = [
+      'authenticate', 'validate', 'transform', 'store', 'email', 'notification', 
+      'error handling', 'logging', 'database', 'integration', 'processing'
+    ];
+    const indicatorCount = complexityIndicators.filter(indicator => lc.includes(indicator)).length;
+    
+    return indicatorCount >= 4 ? 'complex' : 'moderate';
+  }
+
+  private analyzeUserIntent(userPrompt: string): string[] {
+    const lc = userPrompt.toLowerCase();
+    const allBlocks = this.getAllAvailableBlocks();
+    const relevantBlocks: string[] = [];
+    
+    // Find blocks that match user keywords
+    for (const block of allBlocks) {
+      const score = block.keywords.filter(keyword => lc.includes(keyword)).length;
+      if (score > 0) {
+        relevantBlocks.push(`${block.type}:${score}`);
+      }
+    }
+    
+    // Sort by relevance score and return top matches
+    return relevantBlocks
+      .sort((a, b) => parseInt(b.split(':')[1]) - parseInt(a.split(':')[1]))
+      .slice(0, 8)
+      .map(item => item.split(':')[0]);
+  }
+
+  private createSystemPrompt(): string {
+    const availableBlocks = this.getAllAvailableBlocks();
+    const coreBlocks = availableBlocks.filter(b => 
+      ['agent', 'api', 'condition', 'response', 'function'].includes(b.type)
+    );
+    const integrationBlocks = availableBlocks.filter(b => b.category === 'integrations').slice(0, 20);
+    
+    return `You are an AI workflow copilot for AGEN8. Create practical workflows using the EXACT block types available.
+
+CORE WORKFLOW BLOCKS:
+${coreBlocks.map(block => `
+• ${block.name} (${block.type}): ${block.description}
+  Keywords: ${block.keywords.slice(0, 4).join(', ')}
+  Use for: ${block.useCases.join(', ')}
 `).join('')}
 
-WORKFLOW DESIGN PRINCIPLES:
-1. **Think End-to-End**: Always consider the complete user journey from input to final output
-2. **Add Processing Steps**: Include data transformation, validation, and processing blocks
-3. **Include Error Handling**: Add condition blocks for error scenarios when appropriate
-4. **Proper Flow**: Ensure logical sequence - Input → Process → Transform → Output
-5. **Rich Workflows**: Aim for 4-8 blocks minimum for comprehensive automation
-6. **Real-world Logic**: Consider authentication, data validation, formatting, notifications
+POPULAR INTEGRATION BLOCKS:
+${integrationBlocks.map(block => `
+• ${block.name} (${block.type}): ${block.description}
+  Keywords: ${block.keywords.slice(0, 3).join(', ')}
+`).join('')}
 
-WORKFLOW PATTERNS TO FOLLOW:
-- **Data Processing**: Input → Validate → Transform → Process → Store → Notify
-- **API Integration**: Auth → Fetch → Process → Transform → Store/Send → Response
-- **Automation**: Trigger → Fetch Data → Process → Decision → Action → Notification
-- **Content Creation**: Input → Generate → Review → Format → Publish → Track
+WORKFLOW BUILDING RULES:
+1. **Use EXACT block types**: Only use block types from the lists above
+2. **Match user intent**: If user mentions "slack", use block type "slack", not "api"
+3. **Logical flow**: Connect blocks in meaningful sequence
+4. **Appropriate complexity**: Simple requests = 2-3 blocks, complex requests = 4-6 blocks
 
-When a user describes what they want to build, you should:
-1. **Analyze Requirements**: Break down the user's request into specific steps
-2. **Design Complete Flow**: Plan a comprehensive workflow with proper sequence
-3. **Select Appropriate Blocks**: Choose blocks that create a realistic automation
-4. **Configure Meaningfully**: Set up blocks with realistic configurations
-5. **Connect Logically**: Ensure proper data flow between blocks
+BLOCK SELECTION EXAMPLES:
+• "chatbot with gemini" → agent (for AI) + response (for output)
+• "rag with pinecone and slack" → file (read data) + pinecone (vector search) + agent (AI processing) + slack (notifications)
+• "youtube analysis" → youtube (search videos) + agent (analyze) + response (results)
+• "email automation" → gmail (send emails) + condition (logic) + response (confirmation)
 
-Always respond with a JSON object in this format:
+JSON RESPONSE FORMAT:
 {
-  "description": "Comprehensive description of the complete workflow",
+  "description": "Clear workflow description",
   "blocks": [
     {
-      "type": "exact_block_type_from_list_above",
-      "name": "Descriptive Display Name",
-      "description": "Detailed explanation of what this block does in the workflow",
-      "data": {
-        "label": "Meaningful Block Label",
-        "field1": "realistic_configured_value",
-        "field2": "another_realistic_value"
-      }
+      "type": "exact_block_type_from_above_lists",
+      "name": "Descriptive Block Name",
+      "description": "What this block does in this workflow",
+      "data": { "label": "Block Display Name" }
     }
   ],
   "connections": [
-    {
-      "from": "starter",
-      "to": "first_block_name",
-      "description": "Workflow starts from the starter node"
-    },
-    {
-      "from": "first_block_name",
-      "to": "second_block_name",
-      "description": "Data flows from first to second block"
-    }
-  ],
-  "explanation": "Detailed step-by-step explanation of the complete workflow process"
+    { "from": "starter", "to": "first_block_name", "description": "Workflow starts here" },
+    { "from": "first_block_name", "to": "next_block_name", "description": "Data flows here" }
+  ]
 }
 
-CRITICAL RULES:
-- **NO Simple 2-Block Workflows**: Always create comprehensive workflows with multiple processing steps
-- **Starter Block**: Never create a 'starter' block - it exists implicitly, but ALWAYS connect from "starter" to your first block
-- **Block Types**: ONLY use these EXACT block types: ${Object.keys(blockRegistry).filter(k => k !== 'starter').join(', ')}
-- **Realistic Names**: Use descriptive names that clearly indicate the block's purpose
-- **Proper Connections**: ALWAYS start with "starter" → first_block, then connect every block in sequence
-- **Data Flow**: Think about what data flows between blocks and ensure compatibility
-- **Connection Chain**: Every workflow MUST start from "starter" and form a complete chain to the end
-
-IMPORTANT: For a basic AI chatbot, use these blocks:
-- "agent" for AI processing (NOT "AI Chatbot" or "chatbot")
-- "response" for sending replies (NOT "Send Response")
-- "api" for external integrations if needed
-- "condition" for logic branching if needed
-
-EXAMPLES OF GOOD WORKFLOW THINKING:
-- AI Chatbot → agent (AI processing) → condition (check intent) → response (send reply)
-- YouTube Automation → api (YouTube API) → function (Data Processing) → agent (Content Analysis) → api (Google Drive) → response (Notification)
-- E-commerce → api (Product Fetch) → function (Price Analysis) → condition (Inventory Check) → api (Update Database) → response (Send Alert)
-- Social Media → agent (Content Generation) → function (Image Processing) → api (Scheduling) → api (Post Publishing) → response (Analytics Tracking)
-
-Build workflows that users would actually want to use in real scenarios!`;
+CRITICAL: 
+- NEVER create block types not in the lists above
+- ALWAYS start connections from "starter"
+- Use specific integration blocks (slack, pinecone, gmail) instead of generic "api"
+- Match block types to user keywords exactly`;
   }
 
   async generateWorkflowPlan(userPrompt: string): Promise<WorkflowPlan> {
@@ -140,15 +239,56 @@ Build workflows that users would actually want to use in real scenarios!`;
       throw new Error('OpenAI API is not configured. Please set up your API key.');
     }
 
+    // Analyze user intent and suggest relevant blocks
+    const relevantBlocks = this.analyzeUserIntent(userPrompt);
+    const complexity = this.analyzeWorkflowComplexity(userPrompt);
+    
+    console.log(`🔍 User intent analysis - Relevant blocks:`, relevantBlocks);
+    console.log(`🔍 Workflow complexity: ${complexity}`);
+
     const systemPrompt = this.createSystemPrompt();
+    
+    // Add intelligent guidance to the user prompt
+    let enhancedPrompt = `${userPrompt}
+
+INTELLIGENT ANALYSIS:
+- Detected relevant blocks: ${relevantBlocks.slice(0, 5).join(', ')}
+- Complexity level: ${complexity.toUpperCase()}
+
+SPECIFIC GUIDANCE:`;
+    
+    switch (complexity) {
+      case 'simple':
+        enhancedPrompt += `
+- Create a SIMPLE workflow (2-3 blocks)  
+- Focus on core functionality only
+- Example: ${relevantBlocks[0]} → response`;
+        break;
+      case 'moderate':
+        enhancedPrompt += `
+- Create a MODERATE workflow (3-5 blocks)
+- Include essential processing steps
+- Consider: ${relevantBlocks.slice(0, 3).join(' → ')}`;
+        break;
+      case 'complex':
+        enhancedPrompt += `
+- Design a COMPREHENSIVE workflow (4-6 blocks)
+- Include error handling and validation  
+- Suggested flow: ${relevantBlocks.slice(0, 4).join(' → ')}`;
+        break;
+    }
+    
+    enhancedPrompt += `
+
+REMEMBER: Use EXACT block types from the available lists. If user mentions specific services (slack, pinecone, gmail), use those exact block types!`;
     
     const response = await openaiService.chat([
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: userPrompt }
+      { role: 'user', content: enhancedPrompt }
     ], {
-      temperature: 0.2, // Even lower temperature for more consistent JSON output
-      maxTokens: 1500, // Reduced for faster response
-      model: 'gpt-4o-mini' // Use faster model for workflow generation
+      temperature: 0.1, // Very low temperature for consistent, practical results
+      maxTokens: 1000, // Reduced for more focused responses
+      model: 'gpt-4o-mini'
     });
 
     const content = response.choices[0]?.message?.content;
@@ -249,27 +389,61 @@ Build workflows that users would actually want to use in real scenarios!`;
         ...blockSuggestion.data
       };
 
-      // Set defaults for required fields
+      // Smart field population - only fill safe fields, leave sensitive ones empty
       blockConfig.subBlocks?.forEach(subBlock => {
-        if (subBlock.required && !defaultData[subBlock.id]) {
-          switch (subBlock.type) {
-            case 'short-input':
-            case 'long-input':
-              defaultData[subBlock.id] = subBlock.placeholder || '';
-              break;
-            case 'number':
-              defaultData[subBlock.id] = 0;
-              break;
-            case 'toggle':
-              defaultData[subBlock.id] = false;
-              break;
-            case 'combobox': {
-              const options = typeof subBlock.options === 'function' ? subBlock.options() : subBlock.options || [];
-              defaultData[subBlock.id] = options[0]?.id || '';
-              break;
+        if (!defaultData[subBlock.id]) {
+          // Fields that should NEVER be auto-filled (user must configure)
+          const sensitiveFields = [
+            'apikey', 'api_key', 'key', 'token', 'secret', 'password', 'auth',
+            'credential', 'bearer', 'oauth', 'jwt', 'private_key', 'client_secret'
+          ];
+          
+          // Fields that should be left empty for user input
+          const userInputFields = [
+            'prompt', 'message', 'input', 'query', 'question', 'text', 'content',
+            'url', 'endpoint', 'webhook', 'email', 'phone', 'address'
+          ];
+          
+          const fieldId = subBlock.id.toLowerCase();
+          const fieldTitle = (subBlock.title || '').toLowerCase();
+          
+          // Check if this is a sensitive field that should be left empty
+          const isSensitive = sensitiveFields.some(sensitive => 
+            fieldId.includes(sensitive) || fieldTitle.includes(sensitive)
+          );
+          
+          // Check if this is a user input field that should be left empty
+          const isUserInput = userInputFields.some(input => 
+            fieldId.includes(input) || fieldTitle.includes(input)
+          );
+          
+          // Only auto-fill safe, non-sensitive fields
+          if (!isSensitive && !isUserInput) {
+            switch (subBlock.type) {
+              case 'toggle':
+                defaultData[subBlock.id] = false;
+                break;
+              case 'number':
+                // Only set default numbers for safe fields
+                if (!fieldId.includes('port') && !fieldId.includes('timeout')) {
+                  defaultData[subBlock.id] = 0;
+                }
+                break;
+              case 'combobox': {
+                const options = typeof subBlock.options === 'function' ? subBlock.options() : subBlock.options || [];
+                // Only set default for model selection and similar safe dropdowns
+                if (fieldId.includes('model') || fieldId.includes('provider') || fieldId.includes('method')) {
+                  defaultData[subBlock.id] = options[0]?.id || '';
+                }
+                break;
+              }
+              // Don't auto-fill text inputs - let users configure them
             }
-            default:
-              defaultData[subBlock.id] = '';
+          }
+          
+          // For required fields that we didn't fill, set empty string to avoid errors
+          if (subBlock.required && defaultData[subBlock.id] === undefined) {
+            defaultData[subBlock.id] = '';
           }
         }
       });

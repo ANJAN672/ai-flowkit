@@ -34,7 +34,7 @@ export function Copilot() {
       id: 'welcome',
       role: 'assistant',
       content: openaiService.isConfigured() 
-        ? '👋 Hi! I\'m your AI workflow copilot. I can autonomously create complete workflows for you.\n\n✨ **What I can do:**\n• Create workflows from natural language\n• Suggest optimizations\n• Help with block configuration\n• Answer workflow questions\n\nJust describe what you want to build!' 
+        ? '👋 Hi! I\'m your smart AI workflow copilot. I create practical workflows that match your needs.\n\n✨ **What I can do:**\n• Build simple workflows for quick tasks\n• Create complex workflows for advanced automation\n• Suggest the right blocks for your use case\n• Help configure and optimize workflows\n\nJust describe what you want to build - I\'ll match the complexity to your needs!' 
         : 'Hi! I\'m your workflow copilot, but I need an OpenAI API key to function. Please configure your API key in the .env.local file.',
       timestamp: new Date().toISOString()
     }
@@ -260,9 +260,9 @@ export function Copilot() {
 
   const generateQuickWorkflow = async (type: 'chatbot' | 'api-processor' | 'data-analyzer') => {
     const prompts = {
-      chatbot: 'Create a comprehensive customer support chatbot workflow that receives user queries, processes them with AI, checks a knowledge base, provides responses, and escalates complex issues to human agents with proper logging and notifications',
-      'api-processor': 'Create a robust API data processing workflow that authenticates with external APIs, fetches data with error handling, validates and transforms the data, stores it in a database, and sends formatted reports via email with success/failure notifications',
-      'data-analyzer': 'Create an advanced data analysis workflow that ingests input data, validates and cleans it, performs AI-powered analysis, generates insights and visualizations, creates comprehensive reports, and distributes them to stakeholders with automated scheduling'
+      chatbot: 'Create a simple AI chatbot that processes user messages and responds with helpful answers',
+      'api-processor': 'Create a workflow that fetches data from an API and processes the results',
+      'data-analyzer': 'Create a data analysis workflow that takes input data and generates insights'
     };
     
     await handleSendMessage(prompts[type]);
