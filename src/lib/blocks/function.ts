@@ -44,7 +44,7 @@ return {
   async run(ctx) {
   const { code } = ctx.inputs as { code?: unknown };
     
-    ctx.log('Executing custom function');
+    ctx.log('⚙️ Executing custom function');
     
     try {
       // In a real implementation, use vm2 or a proper sandbox
@@ -60,11 +60,11 @@ return {
         ctx.setNodeOutput('result', result);
       }
       
-      ctx.log('Function executed successfully');
+      ctx.log('✅ Function executed successfully');
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      ctx.log(`Function execution failed: ${errorMessage}`);
+      ctx.log(`❌ Function execution failed: ${errorMessage}`);
       ctx.setNodeOutput('error', errorMessage);
       throw error;
     }

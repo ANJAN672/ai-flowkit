@@ -121,14 +121,83 @@ export function ExecutionLog() {
             )}
             
             <div>
-              <span className="text-muted-foreground">Logs:</span>
-              <div className="font-mono">{currentExecution.logs.length}</div>
+              <span className="text-muted-foreground">Status:</span>
+              <div className="font-mono">{currentExecution.status}</div>
             </div>
             
             <div>
               <span className="text-muted-foreground">Nodes:</span>
               <div className="font-mono">{Object.keys(currentExecution.nodeExecutions).length}</div>
             </div>
+          </div>
+        )}
+
+        {/* Response Output */}
+        {currentExecution && currentExecution.status === 'success' && (
+          <div className="mt-3 p-3 bg-muted/50 rounded-lg border">
+            <div className="text-xs font-medium text-muted-foreground mb-2">📋 Workflow Response</div>
+            <div className="max-h-40 overflow-y-auto scrollbar-none">
+              {(() => {
+                // Find response node output - look for any node that starts with 'response'
+                const responseNode = Object.entries(currentExecution.nodeExecutions).find(([nodeId, execution]) => 
+                  nodeId.startsWith('response') && execution.outputs?.response
+                );
+                
+                if (responseNode) {
+                  const [nodeId, execution] = responseNode;
+                  const response = execution.outputs?.response as { message?: string };
+                  return (
+                    <div className="text-sm">
+                      <div className="font-mono text-xs text-muted-foreground mb-1">From: {nodeId}</div>
+                      <div className="whitespace-pre-wrap">{response?.message || 'No message'}</div>
+                    </div>
+                  );
+                }
+                
+                // Fallback: look for any node with response output
+                const anyResponseNode = Object.entries(currentExecution.nodeExecutions).find(([nodeId, execution]) => 
+                  execution.outputs?.response
+                );
+                
+                if (anyResponseNode) {
+                  const [nodeId, execution] = anyResponseNode;
+                  const response = execution.outputs?.response as { message?: string };
+                  return (
+                    <div className="text-sm">
+                      <div className="font-mono text-xs text-muted-foreground mb-1">From: {nodeId}</div>
+                      <div className="whitespace-pre-wrap">{response?.message || 'No message'}</div>
+                    </div>
+                  );
+                }
+                
+                return <div className="text-xs text-muted-foreground">No response found</div>;
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Error Output */}
+        {currentExecution && currentExecution.status === 'error' && (
+          <div className="mt-3 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+            <div className="text-xs font-medium text-destructive mb-2">❌ Workflow Failed</div>
+            {(() => {
+              // Find the failed node
+              const failedNode = Object.entries(currentExecution.nodeExecutions).find(([nodeId, execution]) => 
+                execution.status === 'error'
+              );
+              
+              if (failedNode) {
+                const [nodeId, execution] = failedNode;
+                return (
+                  <div className="text-sm">
+                    <div className="font-mono text-xs text-muted-foreground mb-1">Failed node: {nodeId}</div>
+                    <div className="text-destructive">{execution.error || 'Unknown error'}</div>
+                  </div>
+                );
+              }
+              
+              return <div className="text-xs text-destructive">Workflow execution failed</div>;
+            })()}
           </div>
         )}
       </div>

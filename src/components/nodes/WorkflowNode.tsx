@@ -1,5 +1,5 @@
-import { memo, useMemo, useState, useCallback } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { memo, useMemo, useState, useCallback, useEffect } from 'react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Settings, Play, Pause, AlertCircle, CheckCircle, Clock, Zap } from 'lucide-react';
 import { getBlockConfig } from '@/lib/blocks/registry';
+import { useFieldValue } from '@/hooks/useFieldValue';
 import type { BlockField } from '@/lib/types';
 
 interface WorkflowNodeData {
@@ -28,14 +29,15 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
   const { 
     setSelectedNode, 
     currentExecution,
-    workspaces,
-    currentWorkspaceId,
-    currentWorkflowId,
-    updateWorkflow
+    nodeExpansionStates,
+    setNodeExpansionState
   } = useAppStore();
   
-  const [isExpanded, setIsExpanded] = useState(true);
-  const rf = useReactFlow();
+  // Use global expansion state instead of local state to persist across re-renders
+  const isExpanded = nodeExpansionStates[id as string] ?? true;
+  const setIsExpanded = (expanded: boolean) => setNodeExpansionState(id as string, expanded);
+  
+  const updateFieldValue = useFieldValue(id as string);
   
   // Get block configuration from registry using the node type
   const blockConfig = getBlockConfig(type!);
@@ -78,38 +80,14 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
   };
 
   const IconComponent = blockConfig?.icon;
-  const fields: BlockField[] = blockConfig?.subBlocks || [];
+  const fields: BlockField[] = useMemo(() => blockConfig?.subBlocks || [], [blockConfig?.subBlocks]);
 
-  const updateFieldValue = useCallback((fieldId: string, value: unknown) => {
-    // Set editing flag to prevent auto-save during typing
-    useAppStore.getState().setIsNodeEditing(true);
-    
-    // Update canvas node data immediately to avoid flicker/reset
-    const node = rf.getNode(id as string);
-    if (node) {
-      rf.setNodes((nds) => nds.map(n => n.id === node.id ? { ...n, data: { ...(n.data || {}), [fieldId]: value } } : n));
-    }
+  // Memoized event handlers to prevent re-creation
+  const stopPropagation = useCallback((e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+  }, []);
 
-    // Debounced persist to store
-    const timeoutId = setTimeout(() => {
-      const ws = workspaces.find(w => w.id === currentWorkspaceId);
-      const wf = ws?.workflows.find(w => w.id === currentWorkflowId);
-      if (!ws || !wf) return;
-
-      const updatedNodes = wf.nodes.map(n =>
-        n.id === (id as string)
-          ? { ...n, data: { ...n.data, [fieldId]: value } }
-          : n
-      );
-
-      updateWorkflow(ws.id, { ...wf, nodes: updatedNodes, updatedAt: new Date().toISOString() });
-      useAppStore.getState().setIsNodeEditing(false);
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [id, rf, workspaces, currentWorkspaceId, currentWorkflowId, updateWorkflow]);
-
-  const renderField = (field: BlockField) => {
+  const renderField = useCallback((field: BlockField) => {
     const value = nodeData?.[field.id] || '';
     
     switch (field.type) {
@@ -121,13 +99,11 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               type={field.password ? 'password' : 'text'}
               placeholder={field.placeholder}
               value={value as string}
-              onFocus={() => useAppStore.getState().setIsNodeEditing(true)}
-              onBlur={() => useAppStore.getState().setIsNodeEditing(false)}
               onChange={(e) => updateFieldValue(field.id, e.target.value)}
               className="h-7 text-xs bg-[#333333] border-[#555555] text-white placeholder:text-[#888888] nodrag"
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+              onPointerDown={stopPropagation}
+              onMouseDown={stopPropagation}
+              onClick={stopPropagation}
             />
           </div>
         );
@@ -139,13 +115,14 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
             <Textarea
               placeholder={field.placeholder}
               value={value as string}
-              onFocus={() => useAppStore.getState().setIsNodeEditing(true)}
-              onBlur={() => useAppStore.getState().setIsNodeEditing(false)}
               onChange={(e) => {
                 updateFieldValue(field.id, e.target.value);
-                const el = e.currentTarget as HTMLTextAreaElement;
-                el.style.height = 'auto';
-                el.style.height = Math.min(el.scrollHeight, 400) + 'px';
+                // Auto-resize textarea
+                requestAnimationFrame(() => {
+                  const el = e.currentTarget as HTMLTextAreaElement;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 400) + 'px';
+                });
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Tab') {
@@ -162,9 +139,9 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               }}
               className="min-h-[50px] text-xs resize-none bg-[#333333] border-[#555555] text-white placeholder:text-[#888888] font-mono/relaxed nodrag"
               rows={field.rows || 3}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+              onPointerDown={stopPropagation}
+              onMouseDown={stopPropagation}
+              onClick={stopPropagation}
             />
           </div>
         );
@@ -175,7 +152,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
           <div key={field.id} className="space-y-1">
             <Label className="text-xs font-medium text-[#cccccc]">{field.title}</Label>
             <Select value={value as string} onValueChange={(val) => updateFieldValue(field.id, val)}>
-              <SelectTrigger className="h-7 text-xs bg-[#333333] border-[#555555] text-white" onClick={(e) => e.stopPropagation()}>
+              <SelectTrigger className="h-7 text-xs bg-[#333333] border-[#555555] text-white" onClick={stopPropagation}>
                 <SelectValue placeholder={field.placeholder} />
               </SelectTrigger>
               <SelectContent>
@@ -197,7 +174,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
             <Switch
               checked={value as boolean}
               onCheckedChange={(checked) => updateFieldValue(field.id, checked)}
-              onClick={(e) => e.stopPropagation()}
+              onClick={stopPropagation}
             />
           </div>
         );
@@ -212,7 +189,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               value={value as string}
               onChange={(e) => updateFieldValue(field.id, e.target.value)}
               className="h-7 text-xs bg-background border-border"
-              onClick={(e) => e.stopPropagation()}
+              onClick={stopPropagation}
             />
           </div>
         );
@@ -227,7 +204,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               value={value as string}
               onChange={(e) => updateFieldValue(field.id, e.target.value)}
               className="h-7 text-xs bg-background border-border"
-              onClick={(e) => e.stopPropagation()}
+              onClick={stopPropagation}
             />
           </div>
         );
@@ -238,13 +215,14 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
             <Textarea
               placeholder={field.placeholder}
               value={value as string}
-              onFocus={() => useAppStore.getState().setIsNodeEditing(true)}
-              onBlur={() => useAppStore.getState().setIsNodeEditing(false)}
               onChange={(e) => {
                 updateFieldValue(field.id, e.target.value);
-                const el = e.currentTarget as HTMLTextAreaElement;
-                el.style.height = 'auto';
-                el.style.height = Math.min(el.scrollHeight, 500) + 'px';
+                // Auto-resize textarea
+                requestAnimationFrame(() => {
+                  const el = e.currentTarget as HTMLTextAreaElement;
+                  el.style.height = 'auto';
+                  el.style.height = Math.min(el.scrollHeight, 500) + 'px';
+                });
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Tab') {
@@ -262,34 +240,36 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               }}
               className="min-h-[100px] text-xs resize-none bg-[#1f1f1f] border-[#444444] text-white placeholder:text-[#888888] font-mono nodrag"
               rows={field.rows || 8}
-              onPointerDown={(e) => e.stopPropagation()}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
+              onPointerDown={stopPropagation}
+              onMouseDown={stopPropagation}
+              onClick={stopPropagation}
             />
           </div>
         );
-      case 'slider':
+      case 'slider': {
+        const sliderValue = Number(value ?? field.min ?? 0);
         return (
           <div key={field.id} className="space-y-1">
             <Label className="text-xs font-medium text-[#cccccc] flex items-center justify-between">
               <span>{field.title}</span>
-              <span className="text-[10px] text-[#aaaaaa]">{String(value ?? '')}</span>
+              <span className="text-[10px] text-[#aaaaaa] font-mono">{sliderValue}</span>
             </Label>
             <div className="px-1">
-              {/* @ts-expect-error - Slider Root uses number[] value */}
               <Slider
-                value={[Number(value ?? field.min ?? 0)]}
+                value={[sliderValue]}
                 min={field.min ?? 0}
                 max={field.max ?? 100}
                 step={field.step ?? 1}
                 onValueChange={(vals: number[]) => updateFieldValue(field.id, vals[0])}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => e.stopPropagation()}
+                onPointerDown={stopPropagation}
+                onMouseDown={stopPropagation}
+                onClick={stopPropagation}
+                className="nodrag"
               />
             </div>
           </div>
         );
+      }
         
       default:
         return (
@@ -300,12 +280,15 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               value={value as string}
               onChange={(e) => updateFieldValue(field.id, e.target.value)}
               className="h-7 text-xs bg-background border-border"
-              onClick={(e) => e.stopPropagation()}
+              onClick={stopPropagation}
             />
           </div>
         );
     }
-  };
+  }, [nodeData, updateFieldValue, stopPropagation]);
+
+  // Memoize rendered fields to prevent unnecessary re-renders
+  const renderedFields = useMemo(() => fields.map(renderField), [fields, renderField]);
 
   return (
     <div className="relative group">
@@ -366,12 +349,12 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative z-10">
               {/* Status Badge with Icon */}
               {currentStatus !== 'idle' && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Badge className={cn("text-xs px-2 py-1 flex items-center gap-1", getStatusColor(currentStatus as string))}>
+                    <Badge className={cn("text-xs px-2 py-1 flex items-center gap-1 relative z-10", getStatusColor(currentStatus as string))}>
                       {getStatusIcon(currentStatus as string)}
                       {currentStatus}
                     </Badge>
@@ -382,28 +365,6 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
                   </TooltipContent>
                 </Tooltip>
               )}
-              
-              {/* Expand/Collapse Button */}
-              {fields.length > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-6 w-6 p-0 hover:bg-muted/50 transition-colors" 
-                      onClick={(e) => { 
-                        e.stopPropagation(); 
-                        setIsExpanded(!isExpanded); 
-                      }}
-                    >
-                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{isExpanded ? 'Collapse' : 'Expand'} configuration</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
 
               {/* Quick Action Button */}
               <Tooltip>
@@ -411,11 +372,12 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-6 w-6 p-0 hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100" 
+                    className="h-6 w-6 p-0 hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100 relative z-20 pointer-events-auto" 
                     onClick={(e) => { 
                       e.stopPropagation(); 
                       // Quick action - could open AI assist for this specific node
                     }}
+                    style={{ pointerEvents: 'auto' }}
                   >
                     <Zap size={12} />
                   </Button>
@@ -426,6 +388,27 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
               </Tooltip>
             </div>
           </div>
+          
+          {/* Expand/Collapse Button - Better positioned */}
+          {fields.length > 0 && (
+            <div className="absolute top-2 right-2 z-50">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 w-6 p-0 bg-white/90 dark:bg-gray-800/90 border border-gray-300 dark:border-gray-600 rounded-md shadow-md hover:shadow-lg transition-all duration-200 backdrop-blur-sm" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setIsExpanded(!isExpanded); 
+                }}
+                style={{ 
+                  zIndex: 1000,
+                  pointerEvents: 'auto'
+                }}
+              >
+                {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </Button>
+            </div>
+          )}
           
           {/* Subtle background pattern */}
           <div 
@@ -445,7 +428,7 @@ export const WorkflowNode = memo(({ id, data, selected, type }: NodeProps) => {
             }}
           >
             <div className="space-y-3">
-              {fields.map(renderField)}
+              {renderedFields}
             </div>
             
             {/* Configuration Summary */}

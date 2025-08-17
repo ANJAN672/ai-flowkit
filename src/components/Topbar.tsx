@@ -21,9 +21,8 @@ import {
   Sun,
   Moon,
   MoreHorizontal,
-  ZoomIn,
-  ZoomOut,
-  ScanLine
+  ScanLine,
+  PanelLeft
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { toast } from '@/components/ui/use-toast';
@@ -46,7 +45,9 @@ export function Topbar({ onExecute, isExecuting }: TopbarProps) {
     currentWorkspaceId,
     isDarkMode,
     toggleDarkMode,
-    saveToStorage
+    saveToStorage,
+    leftSidebarVisible,
+    toggleLeftSidebar
   } = useAppStore();
 
   const currentWorkspace = workspaces.find(ws => ws.id === currentWorkspaceId);
@@ -101,8 +102,24 @@ export function Topbar({ onExecute, isExecuting }: TopbarProps) {
 
   return (
     <div className="h-14 border-b border-border bg-background flex items-center justify-between px-4">
-      {/* Left: AGEN8 brand + workflow info */}
+      {/* Left: Sidebar toggle + AGEN8 brand + workflow info */}
       <div className="flex items-center gap-4">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0" 
+              onClick={toggleLeftSidebar}
+            >
+              <PanelLeft className={`w-4 h-4 ${leftSidebarVisible ? 'text-primary' : 'text-muted-foreground'}`} />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {leftSidebarVisible ? 'Hide sidebar' : 'Show sidebar'}
+          </TooltipContent>
+        </Tooltip>
+        
         <div className="flex items-center gap-2 select-none">
           <img src="/favicon.ico" alt="AGEN8" className="w-5 h-5" />
           <span className="text-sm font-semibold">AGEN8</span>
@@ -164,35 +181,13 @@ export function Topbar({ onExecute, isExecuting }: TopbarProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
-                const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'zoomIn' } });
-                window.dispatchEvent(ev);
-              }}>
-                <ZoomIn className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom In</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
-                const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'zoomOut' } });
-                window.dispatchEvent(ev);
-              }}>
-                <ZoomOut className="w-4 h-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Zoom Out</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
                 const ev = new CustomEvent('AGEN8_CANVAS_COMMAND', { detail: { cmd: 'autoArrange' } });
                 window.dispatchEvent(ev);
               }}>
                 <ScanLine className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Auto Arrange</TooltipContent>
+            <TooltipContent>Auto Arrange (Hold Space + Drag to Pan, Space + Scroll to Zoom)</TooltipContent>
           </Tooltip>
         </div>
 

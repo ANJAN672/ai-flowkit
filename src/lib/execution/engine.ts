@@ -26,7 +26,7 @@ export class ExecutionEngine {
       nodeExecutions: {}
     };
 
-    this.log(execution, 'info', `Starting workflow: ${workflow.name}`);
+    this.log(execution, 'info', `🚀 Starting workflow: ${workflow.name}`);
 
     try {
       // Validate workflow
@@ -58,7 +58,15 @@ export class ExecutionEngine {
         const node = workflow.nodes.find(n => n.id === nodeId);
         if (!node) continue;
 
-  await this.executeNode(workflow, node, execution, env, nodeOutputs);
+        try {
+          await this.executeNode(workflow, node, execution, env, nodeOutputs);
+        } catch (error) {
+          // If a node fails, stop the entire workflow execution
+          execution.status = 'error';
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          this.log(execution, 'error', `❌ Node "${node.id}" failed: ${errorMessage}`);
+          throw error; // Re-throw to be caught by outer try-catch
+        }
 
         const nextNodes = this.getConnectedNodes(workflow, nodeId);
         for (const n of nextNodes) {
@@ -68,13 +76,13 @@ export class ExecutionEngine {
 
       if (execution.status !== 'cancelled') {
         execution.status = 'success';
-        this.log(execution, 'info', 'Workflow completed successfully');
+        this.log(execution, 'info', '✅ Workflow completed');
       }
 
     } catch (error) {
       execution.status = 'error';
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      this.log(execution, 'error', `Workflow failed: ${errorMessage}`);
+      this.log(execution, 'error', `💥 Workflow failed: ${errorMessage}`);
     }
 
     execution.endTime = new Date().toISOString();
@@ -100,7 +108,10 @@ export class ExecutionEngine {
     this.onNodeUpdate?.(node.id, nodeExecution);
 
     try {
-      this.log(execution, 'info', `Executing node: ${node.id}`, node.id);
+      // Only log for non-starter nodes to reduce noise
+      if (node.type !== 'starter') {
+        this.log(execution, 'info', `⚡ ${node.type}: ${node.id}`, node.id);
+      }
 
   const blockConfig = getBlockConfig(node.type);
       if (!blockConfig || !blockConfig.run) {
@@ -116,6 +127,10 @@ export class ExecutionEngine {
         fetch: this.createFetchWithTimeout(this.abortController!.signal),
         log: (message: unknown) => this.log(execution, 'info', String(message), node.id),
         getNodeOutput: (nodeId: string, key?: string) => {
+          // Special case: if nodeId is '*', return all node outputs for debugging
+          if (nodeId === '*') {
+            return nodeOutputs;
+          }
           const outputs = nodeOutputs[nodeId];
           return key ? outputs?.[key] : outputs;
         },
@@ -132,9 +147,17 @@ export class ExecutionEngine {
       const result = await blockConfig.run(context);
 
       nodeExecution.status = 'success';
-      nodeExecution.outputs = (result && typeof result === 'object' && !Array.isArray(result))
+      
+      // Combine outputs set via setNodeOutput with the return value
+      const returnOutputs = (result && typeof result === 'object' && !Array.isArray(result))
         ? (result as Record<string, unknown>)
         : { value: result };
+      
+      nodeExecution.outputs = {
+        ...(nodeOutputs[node.id] || {}), // Outputs set via setNodeOutput
+        ...returnOutputs // Return value from the block
+      };
+      
       nodeExecution.endTime = new Date().toISOString();
       nodeExecution.duration = new Date(nodeExecution.endTime).getTime() - new Date(nodeExecution.startTime).getTime();
 
@@ -146,7 +169,10 @@ export class ExecutionEngine {
         };
       }
 
-      this.log(execution, 'info', `Node completed in ${nodeExecution.duration}ms`, node.id);
+      // Only log completion for non-starter nodes
+      if (node.type !== 'starter') {
+        this.log(execution, 'info', `✅ ${node.type} completed`, node.id);
+      }
 
     } catch (error) {
       nodeExecution.status = 'error';
@@ -154,7 +180,7 @@ export class ExecutionEngine {
       nodeExecution.endTime = new Date().toISOString();
       nodeExecution.duration = new Date(nodeExecution.endTime).getTime() - new Date(nodeExecution.startTime).getTime();
 
-      this.log(execution, 'error', `Node failed: ${nodeExecution.error}`, node.id);
+      this.log(execution, 'error', `🚨 Node failed: ${nodeExecution.error}`, node.id);
       throw error;
     }
 

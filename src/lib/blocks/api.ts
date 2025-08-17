@@ -105,7 +105,7 @@ export const apiBlock: BlockConfig = {
       parsedHeaders = headers as Record<string, string>;
     }
 
-    ctx.log(`Making ${finalMethod} request to ${urlStr}`);
+    ctx.log(`🌐 Making ${finalMethod} request to ${urlStr}`);
 
     try {
       const controller = new AbortController();
@@ -151,12 +151,12 @@ export const apiBlock: BlockConfig = {
       ctx.setNodeOutput('headers', result.headers);
       ctx.setNodeOutput('data', result.data);
 
-      ctx.log(`Request completed with status ${response.status}`);
+      ctx.log(`✅ Request completed with status ${response.status}`);
 
       return result;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      ctx.log(`Request failed: ${errorMessage}`);
+      ctx.log(`❌ Request failed: ${errorMessage}`);
 
       ctx.setNodeOutput('error', errorMessage);
 

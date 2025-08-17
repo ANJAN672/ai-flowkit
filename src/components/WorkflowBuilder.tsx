@@ -6,6 +6,7 @@ import type { NodeTypes as RFNodeTypes, NodeProps as RFNodeProps } from '@xyflow
 import '@xyflow/react/dist/style.css';
 import { useAppStore } from '@/lib/store';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { cn } from '@/lib/utils';
 import { Palette } from './Palette';
 import { Topbar } from './Topbar';
 import { ExecutionLog } from './ExecutionLog';
@@ -43,16 +44,10 @@ const edgeTypes = {
 function CanvasCommandListener({ instance }: { instance: ReactFlowInstance<Node, Edge> | null }) {
   useEffect(() => {
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { cmd: 'zoomIn' | 'zoomOut' | 'autoArrange' };
+      const detail = (e as CustomEvent).detail as { cmd: 'autoArrange' };
       if (!instance) return;
       const rf = instance as unknown as RFCoreInstance<Node, Edge>;
-      if (detail?.cmd === 'zoomIn') {
-        const v = rf.getViewport();
-        rf.setViewport({ ...v, zoom: Math.min((v.zoom ?? 1) + 0.1, 1.75) });
-      } else if (detail?.cmd === 'zoomOut') {
-        const v = rf.getViewport();
-        rf.setViewport({ ...v, zoom: Math.max((v.zoom ?? 1) - 0.1, 0.25) });
-      } else if (detail?.cmd === 'autoArrange') {
+      if (detail?.cmd === 'autoArrange') {
         try {
           const nodes = rf.getNodes();
           const edges = rf.getEdges();
@@ -152,12 +147,15 @@ export function WorkflowBuilder() {
   const [reactFlowInstance, setReactFlowInstance] = useState<RFInstance | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const isSpacePressedRef = useRef(false);
 
   // Prevent deleting the starter node via keyboard/backspace in canvas
   const onNodesChangeSafe: OnNodesChange = (changes) => {
     const filtered = changes.filter((ch) => {
       if (ch.type !== 'remove') return true;
-      const id = (ch as any).id as string | undefined;
+      const removeChange = ch as NodeChange & { id: string };
+      const id = removeChange.id;
       if (!id) return true;
       if (id === 'starter') return false;
       const n = nodes.find(n => n.id === id);
@@ -308,6 +306,154 @@ export function WorkflowBuilder() {
     e.preventDefault();
     openRightPanel('copilot');
   }, [openRightPanel]);
+
+  // Space + scroll zoom and drag pan functionality
+  useEffect(() => {
+    let isDragging = false;
+    let lastMousePos = { x: 0, y: 0 };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        // Only prevent default if not in an input field
+        const target = e.target as HTMLElement;
+        const isInputField = target.tagName === 'INPUT' || 
+                            target.tagName === 'TEXTAREA' || 
+                            target.isContentEditable ||
+                            target.closest('[contenteditable]');
+        
+        if (!isInputField && !isSpacePressedRef.current) {
+          isSpacePressedRef.current = true;
+          setIsSpacePressed(true);
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Change cursor to grab when space is pressed
+          if (reactFlowWrapper.current) {
+            reactFlowWrapper.current.style.cursor = 'grab';
+          }
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.code === 'Space') {
+        isSpacePressedRef.current = false;
+        setIsSpacePressed(false);
+        isDragging = false;
+        
+        // Reset cursor
+        if (reactFlowWrapper.current) {
+          reactFlowWrapper.current.style.cursor = '';
+        }
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      // Check the ref directly at the time of the event
+      if (isSpacePressedRef.current && reactFlowInstance) {
+        isDragging = true;
+        lastMousePos = { x: e.clientX, y: e.clientY };
+        
+        // Change cursor to grabbing
+        if (reactFlowWrapper.current) {
+          reactFlowWrapper.current.style.cursor = 'grabbing';
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      // Check the ref directly at the time of the event
+      if (isSpacePressedRef.current && isDragging && reactFlowInstance) {
+        const deltaX = e.clientX - lastMousePos.x;
+        const deltaY = e.clientY - lastMousePos.y;
+        
+        const viewport = reactFlowInstance.getViewport();
+        reactFlowInstance.setViewport({
+          x: viewport.x + deltaX,
+          y: viewport.y + deltaY,
+          zoom: viewport.zoom
+        });
+        
+        lastMousePos = { x: e.clientX, y: e.clientY };
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      if (isDragging) {
+        isDragging = false;
+        
+        // Change cursor back to grab if space is still pressed
+        if (reactFlowWrapper.current && isSpacePressedRef.current) {
+          reactFlowWrapper.current.style.cursor = 'grab';
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      // Shift+Scroll for vertical panning
+      if (e.shiftKey && reactFlowInstance) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const viewport = reactFlowInstance.getViewport();
+        const panDelta = e.deltaY * 0.5; // Adjust sensitivity
+        
+        reactFlowInstance.setViewport({
+          x: viewport.x,
+          y: viewport.y - panDelta, // Negative for natural scroll direction
+          zoom: viewport.zoom
+        });
+        return;
+      }
+      
+      // Space+Scroll for zooming
+      if (isSpacePressedRef.current && reactFlowInstance) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const viewport = reactFlowInstance.getViewport();
+        const zoomDelta = e.deltaY > 0 ? -0.15 : 0.15;
+        const newZoom = Math.min(Math.max(viewport.zoom + zoomDelta, 0.25), 1.75);
+        
+        // Get mouse position for zoom center
+        const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+        if (bounds) {
+          const mouseX = e.clientX - bounds.left;
+          const mouseY = e.clientY - bounds.top;
+          reactFlowInstance.zoomTo(newZoom, { x: mouseX, y: mouseY });
+        } else {
+          reactFlowInstance.setViewport({ ...viewport, zoom: newZoom });
+        }
+      }
+    };
+
+    // Add event listeners with capture to ensure we get them first
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('keyup', handleKeyUp, true);
+    
+    // Add mouse and wheel events to the document to catch all events
+    document.addEventListener('mousedown', handleMouseDown, true);
+    document.addEventListener('mousemove', handleMouseMove, true);
+    document.addEventListener('mouseup', handleMouseUp, true);
+    document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('keyup', handleKeyUp, true);
+      document.removeEventListener('mousedown', handleMouseDown, true);
+      document.removeEventListener('mousemove', handleMouseMove, true);
+      document.removeEventListener('mouseup', handleMouseUp, true);
+      document.removeEventListener('wheel', handleWheel, true);
+    };
+  }, [reactFlowInstance]);
 
   const onDragOver = (event: React.DragEvent) => {
     event.preventDefault();
@@ -508,11 +654,17 @@ export function WorkflowBuilder() {
       />
       
       <div className="flex-1 flex min-h-0">
-        {leftSidebarVisible && !leftSidebarCollapsed && (
-          <div className="w-80 shrink-0">
-            <Palette />
-          </div>
-        )}
+        {/* Sidebar container with smooth transitions */}
+        <div className={cn(
+          "shrink-0 transition-all duration-300 ease-in-out",
+          leftSidebarVisible ? (leftSidebarCollapsed ? "w-0" : "w-80") : "w-0"
+        )}>
+          {leftSidebarVisible && (
+            <div className="w-80 h-full">
+              <Palette />
+            </div>
+          )}
+        </div>
         
         <div className="flex-1 relative min-h-0" ref={reactFlowWrapper}
              onContextMenu={(e) => e.preventDefault() /* disable native menu */}>
@@ -521,21 +673,20 @@ export function WorkflowBuilder() {
           {/* Floating compact header when collapsed */}
           {leftSidebarVisible && leftSidebarCollapsed && (
             <div className="absolute left-0 top-0 z-20">
-              <div className="w-80">
-                <div className="p-3">
-                  <Card className="p-3 flex items-center justify-between">
-                    <span className="text-sm font-medium truncate">{currentWorkspace?.name || 'My Workspace'}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => useAppStore.getState().toggleLeftSidebarCollapsed()}
-                      aria-label="Expand sidebar"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </Card>
-                </div>
+              <div className="p-3">
+                <Card className="p-3 flex items-center justify-between bg-background/95 backdrop-blur-sm shadow-lg">
+                  <span className="text-sm font-medium truncate">{currentWorkspace?.name || 'My Workspace'}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => useAppStore.getState().toggleLeftSidebarCollapsed()}
+                    aria-label="Expand sidebar"
+                    title="Expand sidebar"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </Card>
               </div>
             </div>
           )}
@@ -556,12 +707,16 @@ export function WorkflowBuilder() {
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             minZoom={0.25}
             maxZoom={1.75}
-            panOnScroll={true}
+            panOnScroll={false}
+            zoomOnScroll={false}
+            zoomOnPinch={false}
+            zoomOnDoubleClick={false}
+            preventScrolling={false}
             panOnDrag={[1, 2]}
-            selectionOnDrag={true}
-            nodesDraggable={true}
-            nodesConnectable={true}
-            elementsSelectable={true}
+            selectionOnDrag={!isSpacePressed}
+            nodesDraggable={!isSpacePressed}
+            nodesConnectable={!isSpacePressed}
+            elementsSelectable={!isSpacePressed}
             connectOnClick={false}
             snapToGrid={true}
             snapGrid={[16, 16]}

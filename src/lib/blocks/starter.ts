@@ -18,7 +18,6 @@ export const starterBlock: BlockConfig = {
     payload: { type: 'json', description: 'Initial payload' }
   },
   async run(ctx) {
-    ctx.log('Workflow started');
     const result = {
       startedAt: new Date().toISOString(),
       workflowId: ctx.workflowId

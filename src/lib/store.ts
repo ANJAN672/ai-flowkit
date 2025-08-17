@@ -40,6 +40,9 @@ interface AppState {
 
   // Editing guard
   isNodeEditing: boolean;
+  
+  // Node UI states
+  nodeExpansionStates: Record<string, boolean>;
 }
 
 interface AppActions {
@@ -69,6 +72,7 @@ interface AppActions {
   toggleDarkMode: () => void;
   toggleLeftSidebar: () => void;
   toggleLeftSidebarCollapsed: () => void;
+  toggleHandTool: () => void;
 
   // Right panel actions
   openRightPanel: (tab: 'chat' | 'console' | 'copilot' | 'variables') => void;
@@ -80,6 +84,9 @@ interface AppActions {
   
   // Node editing guard
   setIsNodeEditing: (v: boolean) => void;
+  
+  // Node UI actions
+  setNodeExpansionState: (nodeId: string, expanded: boolean) => void;
   
   // Execution actions
   startExecution: (workflowId: string) => Promise<void>;
@@ -113,7 +120,7 @@ export const useAppStore = create<AppState & AppActions>()(
       showCopilot: false,
       isDarkMode: false,
       leftSidebarVisible: true,
-      leftSidebarCollapsed: false, 
+      leftSidebarCollapsed: false,
       rightPanelOpen: false,
       rightPanelTab: null,
       copilotSeed: null,
@@ -123,6 +130,7 @@ export const useAppStore = create<AppState & AppActions>()(
       historyIndex: -1,
       apiKeys: {},
       isNodeEditing: false,
+      nodeExpansionStates: {},
 
       // Workspace actions
       createWorkspace: (name: string) => {
@@ -354,6 +362,17 @@ export const useAppStore = create<AppState & AppActions>()(
       // Node editing guard
       setIsNodeEditing: (v) => {
         set((state) => ({ ...state, isNodeEditing: v }));
+      },
+      
+      // Node UI actions
+      setNodeExpansionState: (nodeId, expanded) => {
+        set((state) => ({ 
+          ...state, 
+          nodeExpansionStates: { 
+            ...state.nodeExpansionStates, 
+            [nodeId]: expanded 
+          } 
+        }));
       },
 
       // Workflow variables

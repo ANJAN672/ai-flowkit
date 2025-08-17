@@ -2,87 +2,119 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Ensure drag and drop works properly */
+[draggable="true"] {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: element;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Fix for external debugging overlays - DISABLED to allow Palette interactions */
+/* [data-lov-id*="Palette"] {
+  pointer-events: none !important;
+} */
+
+/* Ensure interactive elements always work */
+button, 
+[role="button"], 
+input, 
+textarea, 
+select, 
+[draggable="true"],
+.scrollable-area,
+[data-radix-scroll-area-viewport],
+[data-radix-dropdown-menu-content],
+[data-radix-dropdown-menu-item],
+[role="menu"],
+[role="menuitem"] {
+  pointer-events: auto !important;
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    /* Base colors */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* Base colors - improved contrast for light mode */
+    --background: 0 0% 99%;
+    --foreground: 240 10% 9%;
 
-    /* Surface colors */
+    /* Surface colors - better contrast */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 240 10% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 240 10% 9%;
 
-    /* Primary brand - vibrant blue */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 98%;
-    --primary-hover: 217 91% 55%;
+    /* Primary brand - vibrant blue with better contrast */
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 217 91% 50%;
 
-    /* Secondary - subtle purple */
-    --secondary: 270 5% 96%;
-    --secondary-foreground: 240 6% 10%;
+    /* Secondary - improved contrast */
+    --secondary: 240 5% 94%;
+    --secondary-foreground: 240 10% 15%;
 
-    /* Muted backgrounds */
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
+    /* Muted backgrounds - better readability */
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 6% 35%;
 
-    /* Accent - electric purple */
-    --accent: 270 95% 75%;
-    --accent-foreground: 240 10% 3.9%;
+    /* Accent - toned down for better readability */
+    --accent: 270 60% 65%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Status colors */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 142 76% 36%;
-    --success-foreground: 0 0% 98%;
-    --warning: 48 96% 53%;
-    --warning-foreground: 240 10% 3.9%;
+    /* Status colors - improved contrast */
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 32%;
+    --success-foreground: 0 0% 100%;
+    --warning: 48 96% 48%;
+    --warning-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 217 91% 60%;
+    /* Borders and inputs - better visibility */
+    --border: 240 6% 85%;
+    --input: 240 6% 92%;
+    --ring: 217 91% 55%;
 
-    /* Canvas specific */
-    --canvas-bg: 240 7% 97%;
-    --canvas-grid: 240 5% 90%;
+    /* Canvas specific - improved contrast */
+    --canvas-bg: 240 7% 96%;
+    --canvas-grid: 240 5% 88%;
     --node-bg: 0 0% 100%;
-    --node-border: 240 6% 88%;
-    --node-hover: 217 91% 95%;
-    --node-selected: 217 91% 60%;
+    --node-border: 240 6% 82%;
+    --node-hover: 217 91% 92%;
+    --node-selected: 217 91% 55%;
 
     /* Workflow execution states */
-    --exec-pending: 48 96% 53%;
-    --exec-running: 217 91% 60%;
-    --exec-success: 142 76% 36%;
-    --exec-error: 0 84% 60%;
+    --exec-pending: 48 96% 48%;
+    --exec-running: 217 91% 55%;
+    --exec-success: 142 76% 32%;
+    --exec-error: 0 84% 55%;
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(270 95% 75%));
-    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 98%));
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 55%), hsl(270 60% 65%));
+    --gradient-surface: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 5% 96%));
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-glow: 0 0 20px hsl(217 91% 60% / 0.3);
+    /* Shadows - more visible in light mode */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.08);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.12), 0 2px 4px -2px rgb(0 0 0 / 0.08);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.15), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+    --shadow-glow: 0 0 20px hsl(217 91% 55% / 0.25);
 
     --radius: 0.75rem;
 
-    /* Sidebar */
-    --sidebar-background: 240 5% 96%;
-    --sidebar-foreground: 240 10% 3.9%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 90%;
-    --sidebar-accent-foreground: 240 10% 3.9%;
-    --sidebar-border: 240 6% 90%;
-    --sidebar-ring: 217 91% 60%;
+    /* Sidebar - improved contrast */
+    --sidebar-background: 240 5% 94%;
+    --sidebar-foreground: 240 10% 9%;
+    --sidebar-primary: 217 91% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 5% 88%;
+    --sidebar-accent-foreground: 240 10% 9%;
+    --sidebar-border: 240 6% 85%;
+    --sidebar-ring: 217 91% 55%;
   }
 
   .dark {

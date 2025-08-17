@@ -28,7 +28,7 @@ export const conditionBlock: BlockConfig = {
   async run(ctx) {
   const { expression } = ctx.inputs as { expression?: unknown };
     
-  ctx.log(`Evaluating condition: ${String(expression)}`);
+  ctx.log(`🔀 Evaluating condition: ${String(expression)}`);
     
     try {
       // Get all previous node outputs for the evaluation context
@@ -39,11 +39,11 @@ export const conditionBlock: BlockConfig = {
   const result = evaluateExpression(String(expression ?? ''), context);
       
       ctx.setNodeOutput('result', result);
-      ctx.log(`Condition result: ${result}`);
+      ctx.log(`✅ Condition result: ${result}`);
       
       return { result };
     } catch (error) {
-      ctx.log(`Condition evaluation failed: ${error}`);
+      ctx.log(`❌ Condition evaluation failed: ${error}`);
       const result = false;
       ctx.setNodeOutput('result', result);
       return { result };

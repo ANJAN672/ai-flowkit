@@ -2,6 +2,7 @@ import { Bot } from 'lucide-react';
 import { createElement } from 'react';
 import type { FC } from 'react';
 import { BlockConfig } from '../types';
+import { aiProviderService } from '../services/ai-providers';
 
 const BotIcon: FC<{ size?: number }> = ({ size }) => createElement(Bot, { size });
 
@@ -44,30 +45,58 @@ export const agentBlock: BlockConfig = {
       layout: 'half',
       required: true,
       options: () => [
-        // OpenAI (listed first)
-        { id: 'openai:gpt-4o', label: 'OpenAI — GPT-4o' },
-        { id: 'openai:gpt-4o-mini', label: 'OpenAI — GPT-4o Mini' },
+        // OpenAI (latest models first)
+        { id: 'openai:gpt-5', label: 'OpenAI — GPT-5' },
+        { id: 'openai:gpt-5-mini', label: 'OpenAI — GPT-5 Mini' },
         { id: 'openai:gpt-4.1', label: 'OpenAI — GPT-4.1' },
         { id: 'openai:gpt-4.1-mini', label: 'OpenAI — GPT-4.1 Mini' },
+        { id: 'openai:gpt-4o', label: 'OpenAI — GPT-4o' },
+        { id: 'openai:gpt-4o-mini', label: 'OpenAI — GPT-4o Mini' },
+        { id: 'openai:gpt-4-turbo', label: 'OpenAI — GPT-4 Turbo' },
+        { id: 'openai:gpt-4', label: 'OpenAI — GPT-4' },
         { id: 'openai:gpt-3.5-turbo', label: 'OpenAI — GPT-3.5 Turbo' },
 
-        // Google
+        // Google (latest models first)
+        { id: 'google:gemini-2.5-flash', label: 'Google — Gemini 2.5 Flash' },
+        { id: 'google:gemini-2.5-pro', label: 'Google — Gemini 2.5 Pro' },
+        { id: 'google:gemini-2.0-flash-exp', label: 'Google — Gemini 2.0 Flash Experimental' },
+        { id: 'google:gemini-1.5-pro-002', label: 'Google — Gemini 1.5 Pro (002)' },
+        { id: 'google:gemini-1.5-flash-002', label: 'Google — Gemini 1.5 Flash (002)' },
         { id: 'google:gemini-1.5-pro', label: 'Google — Gemini 1.5 Pro' },
         { id: 'google:gemini-1.5-flash', label: 'Google — Gemini 1.5 Flash' },
-        { id: 'google:gemini-1.0-pro', label: 'Google — Gemini 1.0 Pro' },
+        { id: 'google:gemini-1.5-flash-8b', label: 'Google — Gemini 1.5 Flash 8B' },
 
-        // Mistral
-        { id: 'mistral:mistral-large-latest', label: 'Mistral — Mistral Large (latest)' },
+        // Mistral (latest models first)
+        { id: 'mistral:mistral-small-2503', label: 'Mistral — Small 3.1 (2503)' },
+        { id: 'mistral:mistral-large-2407', label: 'Mistral — Large 2.1 (2407)' },
+        { id: 'mistral:codestral-latest', label: 'Mistral — Codestral' },
+        { id: 'mistral:mistral-large-latest', label: 'Mistral — Large (latest)' },
+        { id: 'mistral:mistral-small-latest', label: 'Mistral — Small (latest)' },
         { id: 'mistral:open-mixtral-8x7b', label: 'Mistral — Mixtral 8x7B Instruct' },
-        { id: 'mistral:mistral-small-latest', label: 'Mistral — Mistral Small (latest)' },
+        { id: 'mistral:open-mixtral-8x22b', label: 'Mistral — Mixtral 8x22B Instruct' },
+
+        // Anthropic (latest models first)
+        { id: 'anthropic:claude-opus-4-1-20250805', label: 'Anthropic — Claude Opus 4.1' },
+        { id: 'anthropic:claude-3-7-sonnet-20250219', label: 'Anthropic — Claude 3.7 Sonnet' },
+        { id: 'anthropic:claude-3-5-haiku-20241022', label: 'Anthropic — Claude 3.5 Haiku' },
+        { id: 'anthropic:claude-3-5-sonnet-20241022', label: 'Anthropic — Claude 3.5 Sonnet' },
+        { id: 'anthropic:claude-3-opus-20240229', label: 'Anthropic — Claude 3 Opus' },
 
         // Azure OpenAI (use deployment name via id after prefix)
+        { id: 'azure:gpt-5', label: 'Azure OpenAI — GPT-5 (deployment)' },
+        { id: 'azure:gpt-4.1', label: 'Azure OpenAI — GPT-4.1 (deployment)' },
         { id: 'azure:gpt-4o', label: 'Azure OpenAI — GPT-4o (deployment)' },
         { id: 'azure:gpt-4o-mini', label: 'Azure OpenAI — GPT-4o Mini (deployment)' },
+        { id: 'azure:gpt-4-turbo', label: 'Azure OpenAI — GPT-4 Turbo (deployment)' },
 
         // Local (kept at end)
+        { id: 'ollama:llama3.3', label: 'Ollama — Llama 3.3' },
         { id: 'ollama:llama3.2', label: 'Ollama — Llama 3.2' },
-        { id: 'ollama:qwen2.5', label: 'Ollama — Qwen 2.5' }
+        { id: 'ollama:llama3.1', label: 'Ollama — Llama 3.1' },
+        { id: 'ollama:qwen2.5', label: 'Ollama — Qwen 2.5' },
+        { id: 'ollama:deepseek-r1', label: 'Ollama — DeepSeek R1' },
+        { id: 'ollama:gemma2', label: 'Ollama — Gemma 2' },
+        { id: 'ollama:mistral', label: 'Ollama — Mistral' }
       ]
     },
     {
@@ -83,13 +112,26 @@ export const agentBlock: BlockConfig = {
       id: 'apiKey',
       title: 'API Key',
       type: 'short-input',
-      layout: 'full',
+      layout: 'half',
       password: true,
-      placeholder: 'API key (OpenAI / Google / Mistral / Azure — optional if set in env)',
+      placeholder: 'Required: Your API key for the selected provider',
+      required: true,
       condition: {
         field: 'model',
         value: 'ollama',
         not: true
+      }
+    },
+    {
+      id: 'endpoint',
+      title: 'Endpoint (Azure only)',
+      type: 'short-input',
+      layout: 'half',
+      placeholder: 'https://your-resource.openai.azure.com',
+      condition: {
+        field: 'model',
+        value: 'azure',
+        operator: 'startsWith'
       }
     },
     {
@@ -113,6 +155,7 @@ export const agentBlock: BlockConfig = {
     model: { type: 'string', description: 'Model to use' },
     temperature: { type: 'number', description: 'Creativity level (0-2)' },
     apiKey: { type: 'string', description: 'API key for the service' },
+    endpoint: { type: 'string', description: 'Endpoint URL (for Azure)' },
     responseFormat: { type: 'json', description: 'Expected response format' }
   },
   outputs: {
@@ -122,110 +165,42 @@ export const agentBlock: BlockConfig = {
     toolCalls: { type: 'json', description: 'Tool calls made by AI' }
   },
   async run(ctx) {
-    const { systemPrompt, userPrompt, model, temperature = 0.7, apiKey, responseFormat } = ctx.inputs;
+    const { systemPrompt, userPrompt, model, temperature = 0.7, apiKey, endpoint, responseFormat } = ctx.inputs;
     
-    ctx.log(`Using model: ${model}`);
-    
-    // Check if Ollama model
     const modelStr = String(model ?? '');
-    if (modelStr.startsWith('ollama:')) {
-      const ollamaModel = modelStr.replace('ollama:', '');
-      try {
-        const response = await ctx.fetch('http://localhost:11434/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: ollamaModel,
-            messages: [
-              ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-              { role: 'user', content: userPrompt }
-            ],
-            stream: false,
-            options: { temperature }
-          }),
-          signal: ctx.abortSignal
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Ollama API error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const result = {
-          content: data.message?.content || 'No response',
-          model: ollamaModel,
-          tokens: data.eval_count || 0
-        };
-        
-        ctx.setNodeOutput('content', result.content);
-        ctx.setNodeOutput('model', result.model);
-        ctx.setNodeOutput('tokens', result.tokens);
-        
-        return result;
-      } catch (error) {
-        ctx.log(`Ollama not available, using mock response: ${error}`);
-        const mockResult = {
-          content: `Mock AI response for prompt: "${String(userPrompt)}"`,
-          model: ollamaModel,
-          tokens: 50
-        };
-        
-        ctx.setNodeOutput('content', mockResult.content);
-        ctx.setNodeOutput('model', mockResult.model);
-        ctx.setNodeOutput('tokens', mockResult.tokens);
-        
-        return mockResult;
-      }
-    }
     
-    // OpenAI/Anthropic API calls
-    const finalApiKey = apiKey || import.meta.env.VITE_OPENAI_API_KEY;
-    
-    if (!finalApiKey) {
-      ctx.log('No API key provided, using mock response');
-      const mockResult = {
-        content: `Mock AI response for prompt: "${String(userPrompt)}" using ${modelStr}`,
-        model: modelStr,
-        tokens: 100
-      };
-      
-      ctx.setNodeOutput('content', mockResult.content);
-      ctx.setNodeOutput('model', mockResult.model);
-      ctx.setNodeOutput('tokens', mockResult.tokens);
-      
-      return mockResult;
-    }
-    
-    // Real OpenAI API implementation
-    try {
-      ctx.log('Making OpenAI API call...');
-      
-      const messages = [
-        ...(systemPrompt ? [{ role: 'system', content: String(systemPrompt) }] : []),
-        { role: 'user', content: String(userPrompt) }
-      ];
+    // Prepare messages
+    const messages = [
+      ...(systemPrompt ? [{ role: 'system' as const, content: String(systemPrompt) }] : []),
+      { role: 'user' as const, content: String(userPrompt) }
+    ];
 
-      const requestBody: {
-        model: string;
-        messages: Array<{ role: string; content: string }>;
-        temperature: number;
-        max_tokens: number;
-        response_format?: { type: string };
-      } = {
-        model: modelStr,
-        messages,
-        temperature: Number(temperature),
-        max_tokens: 1000
-      };
-
-      // Add response format if provided
-      if (responseFormat) {
+    // Add response format instruction if provided
+    if (responseFormat && typeof responseFormat === 'string' && responseFormat.trim()) {
+      const formatStr = responseFormat.trim();
+      
+      // Skip empty objects, null strings, etc.
+      if (formatStr !== '{}' && formatStr !== 'null' && formatStr !== 'undefined' && formatStr !== '') {
         try {
-          const format = typeof responseFormat === 'string' ? JSON.parse(responseFormat) : responseFormat;
-          requestBody.response_format = { type: 'json_object' };
-          // Add format instruction to system prompt
-          if (format && typeof format === 'object') {
-            const formatInstruction = `\n\nPlease respond with valid JSON that matches this schema: ${JSON.stringify(format)}`;
+          let format;
+          
+          // Try to parse as JSON if it looks like JSON
+          if (formatStr.startsWith('{') || formatStr.startsWith('[')) {
+            format = JSON.parse(formatStr);
+            // Skip empty objects
+            if (typeof format === 'object' && Object.keys(format).length === 0) {
+              return; // Don't add format instruction for empty objects
+            }
+          } else {
+            // Treat as plain text description
+            format = formatStr;
+          }
+          
+          if (format) {
+            const formatInstruction = typeof format === 'object' 
+              ? `\n\nPlease respond with valid JSON that matches this schema: ${JSON.stringify(format)}`
+              : `\n\nPlease format your response according to: ${format}`;
+              
             if (messages[0]?.role === 'system') {
               messages[0].content += formatInstruction;
             } else {
@@ -233,36 +208,59 @@ export const agentBlock: BlockConfig = {
             }
           }
         } catch (e) {
-          ctx.log('Invalid response format, ignoring...');
+          // Only log if there was actual content that failed to parse
+          if (formatStr.length > 2) {
+            ctx.log(`⚠️ Response format parsing failed: ${e instanceof Error ? e.message : 'Invalid JSON'}`);
+          }
+          // Continue execution - don't fail the entire node for format issues
         }
       }
+    }
 
-      const response = await ctx.fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${finalApiKey}`,
+    try {
+      const result = await aiProviderService.callProvider(
+        modelStr,
+        modelStr,
+        messages,
+        {
+          apiKey,
+          baseUrl: endpoint,
+          temperature: Number(temperature),
+          maxTokens: 1000
         },
-        body: JSON.stringify(requestBody),
-        signal: ctx.abortSignal
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`OpenAI API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
-      }
-
-      const data = await response.json();
-      const result = {
-        content: data.choices[0]?.message?.content || 'No response',
-        model: modelStr,
-        tokens: data.usage?.total_tokens || 0,
-        toolCalls: data.choices[0]?.message?.tool_calls || null
-      };
-
-      ctx.log(`API call successful. Used ${result.tokens} tokens.`);
+        ctx.abortSignal
+      );
       
-      ctx.setNodeOutput('content', result.content);
+      // Clean up the content - comprehensive formatting cleanup
+      let cleanContent = result.content || '';
+      
+      // Remove "text " prefix if present
+      if (cleanContent.startsWith('text ')) {
+        cleanContent = cleanContent.substring(5);
+      }
+      
+      // Format content for better readability
+      cleanContent = cleanContent
+        // Remove markdown bold formatting
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        // Remove markdown italic formatting  
+        .replace(/\*(.*?)\*/g, '$1')
+        // Clean up quotes
+        .replace(/[""]/g, '"')
+        .replace(/['']/g, "'")
+        // Remove bullet points and list formatting
+        .replace(/^\s*[*\-+]\s+/gm, '')
+        // Clean up excessive punctuation
+        .replace(/\*{2,}/g, '')
+        .replace(/_{2,}/g, '')
+        // Fix spacing
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      // Debug log to see what we got
+      ctx.log(`📤 AI Response: ${cleanContent || 'No content'}`);
+      
+      ctx.setNodeOutput('content', cleanContent);
       ctx.setNodeOutput('model', result.model);
       ctx.setNodeOutput('tokens', result.tokens);
       if (result.toolCalls) {
@@ -271,20 +269,11 @@ export const agentBlock: BlockConfig = {
       
       return result;
     } catch (error) {
-      ctx.log(`OpenAI API error: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      ctx.log(`❌ API error: ${errorMessage}`);
       
-      // Fallback to mock response on error
-      const mockResult = {
-        content: `Error calling OpenAI API: ${error instanceof Error ? error.message : 'Unknown error'}. Mock response for: "${String(userPrompt)}"`,
-        model: modelStr,
-        tokens: 0
-      };
-      
-      ctx.setNodeOutput('content', mockResult.content);
-      ctx.setNodeOutput('model', mockResult.model);
-      ctx.setNodeOutput('tokens', mockResult.tokens);
-      
-      return mockResult;
+      // Throw the error to stop workflow execution
+      throw new Error(`AI model call failed: ${errorMessage}`);
     }
   }
 };
